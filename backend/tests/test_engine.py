@@ -224,3 +224,23 @@ def test_local_search_beginner_queries():
     assert "GOLDBEES.NS" in golds and ("GC=F" in golds or "GLD" in golds)
     assert local_search("bitcoin")[0]["symbol"] == "BTC-USD"
     assert local_search("xzqy") == []
+
+
+def test_extended_uptrend_state_with_watch_levels():
+    """AAPL-at-highs scenario: healthy trend + steep extension -> the engine
+    must say 'strong_uptrend_extended' and still hand over levels to watch."""
+    from app.services.analysis_engine import analyze
+    cs, price = [], 100.0
+    for i in range(240):
+        if i < 228:
+            price += 0.4 + 0.15 * ((i % 7) - 3) / 3
+            w = 0.3 + 0.1 * (i % 3)
+            cs.append(make_candle(i * 86400, price - 0.2, price + w, price - w, price))
+        else:
+            price *= 1.02
+            cs.append(make_candle(i * 86400, price - 1, price + 1.5, price - 2, price, 1500))
+    r = analyze(cs)
+    assert r["setup"]["state"] in ("strong_uptrend_extended", "breakout_above_resistance")
+    w = r["setup"]["watch"]
+    assert w["nearest_support"] is not None or w["recent_swing_low"] is not None
+    assert w["sma20"] is not None and w["recent_swing_high"] >= w["recent_swing_low"]

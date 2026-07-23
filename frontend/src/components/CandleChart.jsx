@@ -26,7 +26,7 @@ const loadSaved = () => {
   try { return JSON.parse(localStorage.getItem(STORE_KEY)) || [] } catch { return [] }
 }
 
-export default function CandleChart({ symbol, analyzeSignal = 0 }) {
+export default function CandleChart({ symbol, analyzeSignal = 0, onAnalysis }) {
   const containerRef = useRef(null)
   const overlayRef = useRef(null)
   const chartRef = useRef(null)
@@ -50,6 +50,7 @@ export default function CandleChart({ symbol, analyzeSignal = 0 }) {
   const [analyzing, setAnalyzing] = useState(false)
   const [analyzeStep, setAnalyzeStep] = useState(0)
   const [analyzeError, setAnalyzeError] = useState('')
+  const [legend, setLegend] = useState(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [activeInds, setActiveInds] = useState(loadSaved) // [{uid,id,params,label,paramSpec}]
   const [indResults, setIndResults] = useState({})        // uid -> compute result
@@ -123,6 +124,14 @@ export default function CandleChart({ symbol, analyzeSignal = 0 }) {
 
     const redraw = () => redrawOverlay()
     chart.timeScale().subscribeVisibleTimeRangeChange(redraw)
+    chart.subscribeCrosshairMove((param) => {
+      const s = mainSeriesRef.current
+      if (!param?.time || !s) { setLegend(null); return }
+      const d = param.seriesData.get(s)
+      if (!d) { setLegend(null); return }
+      const vol = volumeSeriesRef.current ? param.seriesData.get(volumeSeriesRef.current)?.value : null
+      setLegend({ ...d, vol })
+    })
     const ro = new ResizeObserver(redraw)
     ro.observe(el)
     return () => {
@@ -276,6 +285,7 @@ export default function CandleChart({ symbol, analyzeSignal = 0 }) {
   const clearAnalysis = () => {
     analysisRef.current = null
     setAnalysis(null)
+    onAnalysis?.(null)
     setAnalyzeError('')
     for (const line of priceLinesRef.current) {
       try { mainSeriesRef.current?.removePriceLine(line) } catch { /* gone */ }
@@ -295,6 +305,7 @@ export default function CandleChart({ symbol, analyzeSignal = 0 }) {
       const result = await api.analyze(symbol, range, interval)
       analysisRef.current = result
       setAnalysis(result)
+      onAnalysis?.(result)
       applyAnnotationsToMain()
       redrawOverlay()
     } catch (err) {
@@ -410,6 +421,21 @@ export default function CandleChart({ symbol, analyzeSignal = 0 }) {
         <div className="relative mt-4">
           <div ref={containerRef} className="h-[520px] w-full" />
           <svg ref={overlayRef} className="absolute inset-0 w-full h-[520px] pointer-events-none" aria-hidden="true" />
+          {legend && (
+            <div className="absolute top-2 left-2 z-10 price text-[11px] text-mist-200 bg-ink-950/80 backdrop-blur border border-ink-700 rounded px-2.5 py-1.5 pointer-events-none">
+              {legend.open != null ? (
+                <>
+                  O <span className="text-mist-50">{legend.open?.toFixed(2)}</span>{' '}
+                  H <span className="text-bull-500">{legend.high?.toFixed(2)}</span>{' '}
+                  L <span className="text-bear-500">{legend.low?.toFixed(2)}</span>{' '}
+                  C <span className={legend.close >= legend.open ? 'text-bull-500' : 'text-bear-500'}>{legend.close?.toFixed(2)}</span>
+                </>
+              ) : (
+                <>Price <span className="text-mist-50">{legend.value?.toFixed(2)}</span></>
+              )}
+              {legend.vol != null && <span className="text-mist-400"> · Vol {Intl.NumberFormat('en', { notation: 'compact' }).format(legend.vol)}</span>}
+            </div>
+          )}
           {loading && (
             <div className="absolute inset-0 grid place-items-center bg-ink-900/60 backdrop-blur-[1px] rounded-lg">
               <span className="w-6 h-6 border-2 border-mist-400/30 border-t-brass-400 rounded-full animate-spin" />

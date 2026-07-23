@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../auth'
 import AIChat from '../components/AIChat'
 import CandleChart from '../components/CandleChart'
@@ -15,6 +15,33 @@ export default function Workspace() {
   const [view, setView] = useState('pulse')
   const [symbol, setSymbol] = useState('RELIANCE.NS')
   const [analyzeReq, setAnalyzeReq] = useState(0)
+  const [latestAnalysis, setLatestAnalysis] = useState(null)
+  const [newsTitles, setNewsTitles] = useState([])
+
+  // "/" focuses search from anywhere
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === '/' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
+        e.preventDefault()
+        document.querySelector('#global-search input')?.focus()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  // What the AI is allowed to see and cite - nothing more.
+  const chatContext = useMemo(() => ({
+    symbol,
+    analysis: latestAnalysis ? {
+      setup: latestAnalysis.setup,
+      indicators: latestAnalysis.indicators,
+      narration: latestAnalysis.narration,
+    } : null,
+    news_titles: newsTitles.slice(0, 10).map((n) => ({
+      title: n.title, source: n.source_name, confirmed: n.confirmed,
+    })),
+  }), [symbol, latestAnalysis, newsTitles])
 
   const openSymbol = (sym) => {
     setSymbol(sym)
@@ -54,7 +81,7 @@ export default function Workspace() {
             {tab('chart', 'Chart')}
           </nav>
 
-          <div className="flex-1 flex justify-center">
+          <div id="global-search" className="flex-1 flex justify-center">
             <StockSearch onSelect={openSymbol} />
           </div>
 
@@ -96,10 +123,10 @@ export default function Workspace() {
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-5 items-start">
-              <CandleChart symbol={symbol} analyzeSignal={analyzeReq} />
+              <CandleChart symbol={symbol} analyzeSignal={analyzeReq} onAnalysis={setLatestAnalysis} />
               <div className="flex flex-col gap-5">
-                <AIChat onAnalyze={requestAnalyze} />
-                <SymbolNews symbol={symbol} />
+                <AIChat onAnalyze={requestAnalyze} context={chatContext} />
+                <SymbolNews symbol={symbol} onLoaded={setNewsTitles} />
               </div>
             </div>
           </>

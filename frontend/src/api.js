@@ -45,7 +45,7 @@ export const api = {
   candles: (symbol, range, interval) =>
     request(`/api/stocks/${encodeURIComponent(symbol)}/candles?range=${range}&interval=${interval}`),
 
-  aiChat: (message) => request('/api/ai/chat', { method: 'POST', body: { message } }),
+  aiChat: (message, context) => request('/api/ai/chat', { method: 'POST', body: { message, context } }),
   aiStatus: () => request('/api/ai/status'),
 
   analyze: (symbol, range, interval) =>

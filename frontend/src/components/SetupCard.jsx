@@ -89,9 +89,34 @@ export default function SetupCard({ analysis, currencySign }) {
           </div>
         </>
       ) : (
-        <div className="mt-4 bg-ink-800 border border-ink-600 rounded-lg px-4 py-3.5 text-sm text-mist-200">
-          No clean setup on this chart right now — and saying so is the feature.
-          The engine refuses to invent a trade where the structure doesn't offer one.
+        <div className="mt-4">
+          <div className="bg-ink-800 border border-ink-600 rounded-lg px-4 py-3.5 text-sm text-mist-200">
+            {setup.state === 'strong_uptrend_extended'
+              ? 'Strong uptrend, but extended — price is stretched well above its base. Chasing here buys maximum risk; the professional move is waiting for the pullback to the levels below.'
+              : setup.state === 'downtrend'
+              ? 'Downtrend regime — price is below its falling averages. No long setup exists; staying out IS the trade.'
+              : "No clean setup on this chart right now — and saying so is the feature. The engine refuses to invent a trade where the structure doesn't offer one."}
+          </div>
+          {setup.watch && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-3">
+              {setup.watch.nearest_support ? (
+                <Tile label="Nearest support zone"
+                      value={`${fmt(setup.watch.nearest_support.price_low)} – ${fmt(setup.watch.nearest_support.price_high)}`}
+                      tone="text-bull-500" />
+              ) : (
+                <Tile label="Recent swing low" value={fmt(setup.watch.recent_swing_low)} tone="text-bull-500" />
+              )}
+              {setup.watch.nearest_resistance ? (
+                <Tile label="Nearest resistance zone"
+                      value={`${fmt(setup.watch.nearest_resistance.price_low)} – ${fmt(setup.watch.nearest_resistance.price_high)}`}
+                      tone="text-bear-500" />
+              ) : (
+                <Tile label="Recent swing high" value={fmt(setup.watch.recent_swing_high)} tone="text-bear-500" />
+              )}
+              <Tile label="20 SMA (pullback line)" value={fmt(setup.watch.sma20)} tone="text-brass-300" />
+              <Tile label="RSI now" value={indicators.rsi14 ?? '—'} />
+            </div>
+          )}
         </div>
       )}
 

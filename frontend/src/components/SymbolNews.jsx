@@ -9,7 +9,7 @@ const age = (iso) => {
   return h < 24 ? `${h}h` : `${Math.round(h / 24)}d`
 }
 
-export default function SymbolNews({ symbol }) {
+export default function SymbolNews({ symbol, onLoaded }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
 
@@ -18,7 +18,7 @@ export default function SymbolNews({ symbol }) {
     setLoading(true)
     setData(null)
     api.newsSymbol(symbol)
-      .then((d) => alive && setData(d))
+      .then((d) => { if (!alive) return; setData(d); onLoaded?.(d.items || []) })
       .catch(() => alive && setData({ items: [] }))
       .finally(() => alive && setLoading(false))
     return () => { alive = false }

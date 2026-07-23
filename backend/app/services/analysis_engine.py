@@ -87,12 +87,17 @@ def build_zones(pivots: list[Pivot], last_close: float, atr_value: float,
     if not pivots or not atr_value:
         return []
     tol = 0.6 * atr_value
+    width_cap = 1.5 * atr_value
     clusters: list[list[Pivot]] = []
     for p in sorted(pivots, key=lambda x: x.price):
-        if clusters and abs(p.price - statistics.mean(q.price for q in clusters[-1])) <= tol:
-            clusters[-1].append(p)
-        else:
-            clusters.append([p])
+        if clusters:
+            prices = [q.price for q in clusters[-1]]
+            near = abs(p.price - statistics.mean(prices)) <= tol
+            within_cap = (max(prices + [p.price]) - min(prices + [p.price])) <= width_cap
+            if near and within_cap:
+                clusters[-1].append(p)
+                continue
+        clusters.append([p])
 
     zones = []
     for cluster in clusters:
@@ -210,6 +215,10 @@ def detect_setup(candles: list[dict], zones: list[dict], ind: dict) -> dict:
             state, bias, key_zone = "pullback_to_support", "bullish", nearest_sup
         elif downtrend:
             state, bias = "downtrend", "bearish"
+        elif uptrend:
+            # Trend is healthy but price is stretched away from the base:
+            # the honest call is "wait for the pullback", not silence.
+            state, bias = "strong_uptrend_extended", "bullish"
 
     plan = None
     if a and bias == "bullish" and state != "downtrend":
@@ -324,6 +333,16 @@ def analyze(candles: list[dict]) -> dict:
     setup = detect_setup(candles, zones, ind)
     confidence, factors = confidence_factors(setup, ind, candles)
 
+    supports = [z for z in zones if z["kind"] == "support"]
+    resistances = [z for z in zones if z["kind"] == "resistance"]
+    watch = {
+        "nearest_support": max(supports, key=lambda z: z["mid"]) if supports else None,
+        "nearest_resistance": min(resistances, key=lambda z: z["mid"]) if resistances else None,
+        "sma20": ind["sma20"],
+        "recent_swing_low": round(min(c["low"] for c in candles[-20:]), 2),
+        "recent_swing_high": round(max(c["high"] for c in candles[-20:]), 2),
+    }
+
     return {
         "as_of": candles[-1]["time"],
         "indicators": ind,
@@ -336,5 +355,6 @@ def analyze(candles: list[dict]) -> dict:
             "plan": setup["plan"],
             "confidence": confidence,
             "factors": factors,
+            "watch": watch,
         },
     }

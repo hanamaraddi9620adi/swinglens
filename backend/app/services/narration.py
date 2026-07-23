@@ -83,6 +83,19 @@ def _fallback(payload: dict) -> dict:
     ind = payload["indicators"]
     state = s["state"].replace("_", " ")
     plan = s["plan"]
+    if not plan and s["state"] == "strong_uptrend_extended":
+        w = s.get("watch") or {}
+        sup = w.get("nearest_support")
+        swing_low = w.get("recent_swing_low")
+        sup_txt = (f"the {sup['price_low']}\u2013{sup['price_high']} support zone" if sup
+                   else (f"the recent swing low near {swing_low}" if swing_low else "the nearest support"))
+        sma = w.get("sma20")
+        return {
+            "pattern": f"Strong established uptrend, but price is extended \u2014 last at {ind['last_close']}, stretched above its base.",
+            "why": "Chasing an extended move buys at the point of maximum risk; the trend is healthy, the entry is not.",
+            "confirmation": f"A controlled pullback that holds {sup_txt}" + (f" or the 20 SMA around {sma}" if sma else "") + " builds the next clean entry.",
+            "invalidation": "A high-volume break below the nearest support zone would end the extension thesis entirely.",
+        }
     if not plan:
         return {
             "pattern": f"Current state: {state}. No clean long setup on this chart right now.",
