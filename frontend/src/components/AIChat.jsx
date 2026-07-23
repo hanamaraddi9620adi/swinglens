@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api'
 
-export default function AIChat() {
+export default function AIChat({ onAnalyze }) {
   const [status, setStatus] = useState(null)
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
@@ -21,6 +21,7 @@ export default function AIChat() {
     try {
       const res = await api.aiChat(text)
       setMessages((m) => [...m, { role: 'ai', text: res.reply }])
+      if (res.action?.type === 'analyze' && onAnalyze) onAnalyze(res.action.symbol)
     } catch (err) {
       setMessages((m) => [...m, { role: 'error', text: err.message }])
     } finally {
@@ -50,7 +51,9 @@ export default function AIChat() {
           </div>
         ) : messages.length === 0 ? (
           <p className="text-xs text-mist-400 leading-relaxed">
-            Connected. Ask anything to test the local model — chart-aware analysis arrives in Phase 2.
+            Connected. Try: <span className="price text-brass-400">analyse suzlon</span> — the
+            platform will load the chart, mark the levels, and build the setup card. Or ask
+            any concept question.
           </p>
         ) : null}
 

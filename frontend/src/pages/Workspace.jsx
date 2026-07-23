@@ -9,6 +9,14 @@ const QUICK_PICKS = ['RELIANCE.NS', 'TATAMOTORS.NS', 'SUZLON.NS', 'AAPL', 'NVDA'
 export default function Workspace() {
   const { user, logout } = useAuth()
   const [symbol, setSymbol] = useState('RELIANCE.NS')
+  const [analyzeReq, setAnalyzeReq] = useState(0)
+
+  // Called when the chat resolves an "analyse <stock>" request:
+  // switch the chart and fire the real pipeline.
+  const requestAnalyze = (sym) => {
+    setSymbol(sym)
+    setAnalyzeReq((n) => n + 1)
+  }
 
   return (
     <div className="min-h-full flex flex-col">
@@ -55,8 +63,8 @@ export default function Workspace() {
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-5 items-start">
-          <CandleChart symbol={symbol} />
-          <AIChat />
+          <CandleChart symbol={symbol} analyzeSignal={analyzeReq} />
+          <AIChat onAnalyze={requestAnalyze} />
         </div>
 
         <p className="mt-6 text-[11px] text-mist-400/70 leading-relaxed max-w-3xl">

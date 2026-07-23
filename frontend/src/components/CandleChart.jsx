@@ -21,7 +21,7 @@ const BRASS = '#e8b64c'
 
 const ANALYZE_STEPS = ['Reading the chart…', 'Marking the levels…', 'Building the plan…', 'Writing the narration…']
 
-export default function CandleChart({ symbol }) {
+export default function CandleChart({ symbol, analyzeSignal = 0 }) {
   const containerRef = useRef(null)
   const overlayRef = useRef(null)
   const chartRef = useRef(null)
@@ -240,6 +240,12 @@ export default function CandleChart({ symbol }) {
     setInterval_(iv)
     if (!ALLOWED[iv].includes(range)) setRange(ALLOWED[iv][ALLOWED[iv].length - 1])
   }
+
+  // Chat-triggered analysis: "analyse reliance" in the chat lands here.
+  useEffect(() => {
+    if (analyzeSignal > 0) runAnalyze()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analyzeSignal])
 
   const up = meta ? meta.change >= 0 : true
   const currencySign = meta?.currency === 'INR' ? '₹' : meta?.currency === 'USD' ? '$' : ''
