@@ -52,6 +52,9 @@ export const api = {
     request(`/api/analysis/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`, { method: 'POST' }),
   myPlans: () => request('/api/analysis/plans'),
 
+  newsMarket: () => request('/api/news/market'),
+  newsSymbol: (symbol) => request(`/api/news/${encodeURIComponent(symbol)}`),
+
   marketSegments: () => request('/api/markets/segments'),
   marketsOverview: () => request('/api/markets/overview'),
   marketSegment: (id) => request(`/api/markets/${encodeURIComponent(id)}`),

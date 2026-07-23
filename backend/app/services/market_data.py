@@ -123,13 +123,24 @@ def search_symbols(query: str) -> dict:
     if len(query) < 2:
         return {"results": [], "source": _source_block("")}
 
+    # 1) Local curated search first: company NAMES, typo-tolerant, covers
+    #    stocks + ETFs + commodities + indices + crypto, no .NS needed.
+    from . import markets  # lazy import (markets imports from this module)
     results: list[dict] = []
     try:
+        results.extend(markets.local_search(query))
+    except Exception:
+        pass
+    seen = {r["symbol"] for r in results}
+
+    # 2) Yahoo's search fills in everything outside the curated lists.
+    try:
         found = yf.Search(query, max_results=10)
+        yahoo_rows = []
         for q in found.quotes or []:
             if q.get("quoteType") not in ("EQUITY", "ETF", "INDEX"):
                 continue
-            results.append(
+            yahoo_rows.append(
                 {
                     "symbol": q.get("symbol"),
                     "name": q.get("shortname") or q.get("longname") or q.get("symbol"),
@@ -137,9 +148,17 @@ def search_symbols(query: str) -> dict:
                     "type": q.get("quoteType", ""),
                 }
             )
+        # India-first ordering within Yahoo results too
+        yahoo_rows.sort(key=lambda r: 0 if str(r["symbol"]).endswith((".NS", ".BO")) else 1)
+        for r in yahoo_rows:
+            if r["symbol"] and r["symbol"] not in seen:
+                seen.add(r["symbol"])
+                results.append(r)
     except Exception:
         # Fallback: probe likely symbols directly (US, NSE, BSE variants).
         for candidate in (query.upper(), f"{query.upper()}.NS", f"{query.upper()}.BO"):
+            if candidate in seen:
+                continue
             try:
                 df = yf.Ticker(candidate).history(period="5d", interval="1d")
                 if df is not None and not df.empty:
@@ -149,4 +168,4 @@ def search_symbols(query: str) -> dict:
             except Exception:
                 continue
 
-    return {"results": results, "source": _source_block(query)}
+    return {"results": results[:10], "source": _source_block(query)}

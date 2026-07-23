@@ -172,3 +172,55 @@ def test_markets_batch_quotes_shaping(monkeypatch):
     import pytest
     with pytest.raises(KeyError):
         mk.get_segment("moon_rocks")
+
+
+# --------------------------------------------------------------- news suite
+
+def _fake_entry(title, link, src):
+    class S: pass
+    e = {"title": title, "link": link, "published_parsed": (2026, 7, 16, 10, 0, 0, 0, 0, 0)}
+    class E(dict):
+        source = type("Src", (), {"title": src})()
+        def __getattr__(self, k):
+            try: return self[k]
+            except KeyError: raise AttributeError(k)
+    out = E(e)
+    return out
+
+def test_news_corroboration_and_cache(monkeypatch):
+    from app.services import news as nw
+    nw._CACHE.clear()
+
+    def fake_parse(url):
+        if "economictimes" in url:
+            return {"entries": [_fake_entry("Reliance Q1 profit jumps 12% on retail growth", "https://et.com/a1", "Economic Times")]}
+        if "moneycontrol" in url:
+            return {"entries": [_fake_entry("Reliance Q1 profit surges 12% led by retail", "https://mc.com/b2", "Moneycontrol")]}
+        if "livemint" in url:
+            return {"entries": [_fake_entry("Rupee slips against dollar in early trade", "https://lm.com/c3", "LiveMint")]}
+        return {"entries": []}
+    monkeypatch.setattr(nw.feedparser, "parse", fake_parse)
+
+    out = nw.get_market_news()
+    stories = {s["title"]: s for s in out["items"]}
+    confirmed = [s for s in out["items"] if s["confirmed"]]
+    assert len(confirmed) == 1, "the two similar Reliance headlines must merge and confirm"
+    assert set(confirmed[0]["corroborated_by"]) == {"Economic Times", "Moneycontrol"}
+    unverified = [s for s in out["items"] if not s["confirmed"]]
+    assert any("Rupee" in s["title"] for s in unverified)
+    assert set(out["feeds_ok"]) >= {"Economic Times Markets", "Moneycontrol Markets", "LiveMint Markets"}
+    assert out["feeds_failed"]  # the google feeds returned no entries -> reported honestly
+
+    calls = {"n": 0}
+    monkeypatch.setattr(nw.feedparser, "parse", lambda u: calls.__setitem__("n", calls["n"] + 1) or {"entries": []})
+    nw.get_market_news()
+    assert calls["n"] == 0, "second call must be served from cache"
+
+
+def test_local_search_beginner_queries():
+    from app.services.markets import local_search
+    assert local_search("larsen and turbo")[0]["symbol"] == "LT.NS"
+    golds = {r["symbol"] for r in local_search("gold")}
+    assert "GOLDBEES.NS" in golds and ("GC=F" in golds or "GLD" in golds)
+    assert local_search("bitcoin")[0]["symbol"] == "BTC-USD"
+    assert local_search("xzqy") == []

@@ -90,3 +90,13 @@ body {
 .marquee:hover .marquee-track { animation-play-state: paused; }
 @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 @media (prefers-reduced-motion: reduce) { .marquee-track { animation: none; } }
+
+/* Pulse dashboard: drifting headline sky */
+.news-sky { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.news-sky .drift { position: absolute; pointer-events: auto; animation: drift linear infinite; will-change: transform; }
+.news-sky:hover .drift { animation-play-state: paused; }
+@keyframes drift { from { transform: translateX(105vw); } to { transform: translateX(-130%); } }
+@media (prefers-reduced-motion: reduce) {
+  .news-sky { position: static; display: flex; flex-wrap: wrap; gap: 10px; }
+  .news-sky .drift { position: static; animation: none; }
+}

@@ -5,12 +5,14 @@ import CandleChart from '../components/CandleChart'
 import StockSearch from '../components/StockSearch'
 import TickerStrip from '../components/TickerStrip'
 import Explore from './Explore'
+import Pulse from './Pulse'
+import SymbolNews from '../components/SymbolNews'
 
 const QUICK_PICKS = ['RELIANCE.NS', 'TATAMOTORS.NS', 'SUZLON.NS', 'AAPL', 'NVDA']
 
 export default function Workspace() {
   const { user, logout } = useAuth()
-  const [view, setView] = useState('explore')
+  const [view, setView] = useState('pulse')
   const [symbol, setSymbol] = useState('RELIANCE.NS')
   const [analyzeReq, setAnalyzeReq] = useState(0)
 
@@ -47,6 +49,7 @@ export default function Workspace() {
           </div>
 
           <nav className="flex items-center gap-1 shrink-0">
+            {tab('pulse', 'Pulse')}
             {tab('explore', 'Explore')}
             {tab('chart', 'Chart')}
           </nav>
@@ -65,11 +68,13 @@ export default function Workspace() {
             </button>
           </div>
         </div>
-        <TickerStrip />
+        <TickerStrip onOpenSymbol={openSymbol} />
       </header>
 
       <main className="flex-1 max-w-[1400px] w-full mx-auto px-4 sm:px-6 py-5">
-        {view === 'explore' ? (
+        {view === 'pulse' ? (
+          <Pulse onOpenSymbol={openSymbol} />
+        ) : view === 'explore' ? (
           <Explore onOpenSymbol={openSymbol} />
         ) : (
           <>
@@ -92,7 +97,10 @@ export default function Workspace() {
 
             <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-5 items-start">
               <CandleChart symbol={symbol} analyzeSignal={analyzeReq} />
-              <AIChat onAnalyze={requestAnalyze} />
+              <div className="flex flex-col gap-5">
+                <AIChat onAnalyze={requestAnalyze} />
+                <SymbolNews symbol={symbol} />
+              </div>
             </div>
           </>
         )}

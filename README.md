@@ -1,4 +1,4 @@
-# SwingLens — Phase 2.5 (Pro Toolbox)
+# SwingLens — Phase 3 (Newsroom)
 
 A local-first stock analysis platform. Phase 2 adds the Analyst Engine:
 press **Analyze** on any chart and the platform detects swing pivots, draws
@@ -139,8 +139,10 @@ Design rules the whole project follows:
 ## Roadmap
 
 - **Phase 2 — Analyst Engine**: DONE (this build).
-- **Phase 3 — Newsroom**: real-time RSS news with 2-source corroboration, NSE
-  insider/bulk-deal disclosures, animated news dashboard.
+- **Phase 3 — Newsroom**: DONE (this build) — real RSS headlines with the
+  2-source CONFIRMED gate, Pulse dashboard with drifting headline sky,
+  per-symbol news panel, name-first typo-tolerant search, clickable ticker.
+  NSE insider/bulk-deal disclosures move to Phase 4 alongside portfolios.
 - **Phase 4 — Mirror**: INDMoney/Groww CSV import, portfolio dashboard,
   trading-behavior analytics.
 - **Phase 5 — SaaS**: Docker, PostgreSQL, broker API adapters, deployment.

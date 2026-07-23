@@ -54,7 +54,7 @@ export default function StockSearch({ onSelect }) {
           value={q}
           onChange={onChange}
           onFocus={() => results.length && setOpen(true)}
-          placeholder="Search any stock — Reliance, Suzlon, AAPL…"
+          placeholder="Search by name — Larsen & Toubro, gold, Apple…"
           className="w-full bg-transparent px-2.5 py-2 text-sm text-mist-50 placeholder-mist-400/60 focus:outline-none"
         />
         {loading && <span className="w-3.5 h-3.5 border-2 border-mist-400/40 border-t-brass-400 rounded-full animate-spin shrink-0" />}
@@ -69,8 +69,8 @@ export default function StockSearch({ onSelect }) {
                 className="w-full flex items-center justify-between gap-3 px-3.5 py-2.5 text-left hover:bg-ink-800"
               >
                 <span className="min-w-0">
-                  <span className="price text-sm text-mist-50">{r.symbol}</span>
-                  <span className="block text-xs text-mist-400 truncate">{r.name}</span>
+                  <span className="text-sm text-mist-50 truncate block">{r.name}</span>
+                  <span className="price text-[10px] text-mist-400">{r.symbol}</span>
                 </span>
                 <span className="shrink-0 text-[10px] uppercase tracking-wider text-brass-400 border border-brass-400/30 rounded px-1.5 py-0.5">
                   {badgeFor(r.symbol, r.exchange)}

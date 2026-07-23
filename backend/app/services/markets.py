@@ -175,3 +175,77 @@ def get_segment(segment: str) -> dict:
 
 def list_segments() -> list[dict]:
     return [{"id": k, "label": v["label"], "group": v["group"]} for k, v in SEGMENTS.items()]
+
+
+# ---------------------------------------------------------------- search
+# Beginner-friendly local search: match by COMPANY NAME (typo-tolerant)
+# across every curated universe — stocks, ETFs, commodities, indices,
+# crypto — so "larsen and turbo" finds LT.NS instantly, no .NS needed.
+
+from difflib import SequenceMatcher
+
+_NAME_STOP = {"and", "the", "of", "ltd", "limited", "india", "inc", "co", "corp", "company"}
+
+
+def _norm_name(s: str) -> str:
+    s = s.lower().replace("&", " ")
+    s = "".join(ch if ch.isalnum() else " " for ch in s)
+    return " ".join(w for w in s.split() if w not in _NAME_STOP)
+
+
+def _all_known() -> list[tuple[str, str, str]]:
+    """(symbol, name, group) across every universe + the overview strip."""
+    out = []
+    for seg in SEGMENTS.values():
+        for sym, name in seg["symbols"].items():
+            out.append((sym, name, seg["group"]))
+    for name, sym in OVERVIEW:
+        out.append((sym, name, "Indices & Macro"))
+    return out
+
+
+def _match_score(query_norm: str, name: str, symbol: str) -> float:
+    n = _norm_name(name)
+    s = symbol.split(".")[0].split("=")[0].replace("^", "").replace("-", "").lower()
+    q = query_norm
+    if not q:
+        return 0.0
+    if q == s or q == n:
+        return 100.0
+    score = SequenceMatcher(None, q, n).ratio() * 70
+    if n.startswith(q):
+        score += 25
+    elif q in n:
+        score += 18
+    if s.startswith(q.replace(" ", "")):
+        score += 22
+    q_toks = q.split()
+    n_toks = n.split()
+    if q_toks and n_toks and all(
+        any(t == w or t in w or SequenceMatcher(None, t, w).ratio() >= 0.7 for w in n_toks)
+        for t in q_toks
+    ):
+        score += 15
+    return score
+
+
+def local_search(query: str, limit: int = 8) -> list[dict]:
+    q = _norm_name(query)
+    scored = []
+    for sym, name, group in _all_known():
+        sc = _match_score(q, name, sym)
+        if sc >= 45:
+            # India-first nudge for equal-quality matches
+            if sym.endswith((".NS", ".BO")):
+                sc += 4
+            scored.append((sc, {"symbol": sym, "name": name, "exchange": group, "type": "KNOWN"}))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    seen, results = set(), []
+    for _, row in scored:
+        if row["symbol"] in seen:
+            continue
+        seen.add(row["symbol"])
+        results.append(row)
+        if len(results) >= limit:
+            break
+    return results
