@@ -244,3 +244,57 @@ def test_extended_uptrend_state_with_watch_levels():
     w = r["setup"]["watch"]
     assert w["nearest_support"] is not None or w["recent_swing_low"] is not None
     assert w["sma20"] is not None and w["recent_swing_high"] >= w["recent_swing_low"]
+
+
+# ----------------------------------------------------- scanner + chat memory
+
+def test_scanner_ranks_engine_setups(monkeypatch):
+    import pandas as pd
+    from app.services import scanner as sc
+    sc._CACHE.clear()
+    breakout = synthetic_breakout(120)
+    flat = [make_candle(i * 86400, 50, 50.6, 49.4, 50 + 0.01 * (i % 3)) for i in range(120)]
+
+    def fake_download(symbols, **kw):
+        idx = pd.to_datetime([c["time"] for c in breakout], unit="s")
+        cols = pd.MultiIndex.from_product([symbols, ["Open", "High", "Low", "Close", "Volume"]])
+        df = pd.DataFrame(index=idx, columns=cols, dtype=float)
+        for i, s in enumerate(symbols):
+            src = breakout if i == 0 else flat
+            for f, k in (("Open", "open"), ("High", "high"), ("Low", "low"),
+                         ("Close", "close"), ("Volume", "volume")):
+                df[(s, f)] = [c[k] for c in src]
+        return df
+    monkeypatch.setattr(sc.yf, "download", fake_download)
+
+    out = sc.scan("india_large", top=5)
+    assert out["scanned"] > 0 and out["techniques"]
+    assert out["actionable"], "the breakout symbol must surface as actionable"
+    first = out["actionable"][0]
+    assert first["plan"]["risk_reward"] >= 1.0 and 0 <= first["confidence"] <= 100
+    # cache
+    monkeypatch.setattr(sc.yf, "download", lambda *a, **k: (_ for _ in ()).throw(AssertionError("no refetch")))
+    assert sc.scan("india_large", top=5)["scanned"] == out["scanned"]
+
+
+def test_chat_history_persists(monkeypatch):
+    from fastapi.testclient import TestClient
+    import app.routers.ai as ai_mod
+    from app.main import app
+    monkeypatch.setattr(ai_mod, "search_symbols",
+                        lambda q: {"results": [{"symbol": "SUZLON.NS", "name": "Suzlon", "exchange": "NSI", "type": "EQUITY"}]})
+    import uuid
+    c = TestClient(app)
+    uid = uuid.uuid4().hex[:8]
+    r = c.post("/api/auth/register",
+               json={"username": f"chat_{uid}", "email": f"{uid}@t.com", "password": "password123"})
+    H = {"Authorization": f"Bearer {r.json()['access_token']}"}
+    r = c.post("/api/ai/chat", headers=H, json={"message": "analyse suzlon"})
+    conv_id = r.json()["conversation_id"]
+    assert r.json()["action"]["symbol"] == "SUZLON.NS"
+    convs = c.get("/api/ai/conversations", headers=H).json()
+    assert any(cv["id"] == conv_id for cv in convs)
+    msgs = c.get(f"/api/ai/conversations/{conv_id}/messages", headers=H).json()
+    assert [m["role"] for m in msgs] == ["user", "ai"]
+    assert c.delete(f"/api/ai/conversations/{conv_id}", headers=H).json()["deleted"] == conv_id
+    assert c.get(f"/api/ai/conversations/{conv_id}/messages", headers=H).status_code == 404

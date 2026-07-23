@@ -45,7 +45,12 @@ export const api = {
   candles: (symbol, range, interval) =>
     request(`/api/stocks/${encodeURIComponent(symbol)}/candles?range=${range}&interval=${interval}`),
 
-  aiChat: (message, context) => request('/api/ai/chat', { method: 'POST', body: { message, context } }),
+  aiChat: (message, context, conversation_id) =>
+    request('/api/ai/chat', { method: 'POST', body: { message, context, conversation_id } }),
+  aiConversations: () => request('/api/ai/conversations'),
+  aiMessages: (id) => request(`/api/ai/conversations/${id}/messages`),
+  aiDeleteConversation: (id) => request(`/api/ai/conversations/${id}`, { method: 'DELETE' }),
+  runScan: (segment, top = 5) => request(`/api/scan?segment=${encodeURIComponent(segment)}&top=${top}`),
   aiStatus: () => request('/api/ai/status'),
 
   analyze: (symbol, range, interval) =>

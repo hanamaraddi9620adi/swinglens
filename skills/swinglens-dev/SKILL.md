@@ -14,6 +14,9 @@ Local-first (Ollama, SQLite, free data), architected to flip to SaaS.
 1. **Numbers come from math or data sources — NEVER from an LLM.**
    The LLM only explains computed facts. Any narration pass must be followed
    by verification that every number it used exists in the fact payload.
+   Corollary: the LLM NEVER picks or recommends stocks — "which stocks look
+   bullish" routes to the deterministic scanner (services/scanner.py), which
+   runs the analysis engine across a whole universe and ranks by confidence.
 2. **Every data payload carries a `source` block** — provider name, clickable
    URL, fetch timestamp, optional honesty note — and the UI displays it.
 3. **Every external system sits behind an adapter/registry seam** (LLM
@@ -68,7 +71,8 @@ price (tabular-nums), rise-in reveals, honest empty states.
 ## Phase workflow
 
 Phases so far: 1 skeleton → 2 analyst engine → 2.1 chat-to-analyze →
-2.5 indicator toolbox → 2.75 markets explore → 3 newsroom+grounded chat.
+2.5 indicator toolbox → 2.75 markets explore → 3 newsroom+grounded chat →
+3.75 market scanner + persistent conversations.
 Next: 4 portfolio mirror (CSV import, behavior analytics) → 5 SaaS
 (Docker, Postgres, broker APIs, SEBI-aware framing).
 

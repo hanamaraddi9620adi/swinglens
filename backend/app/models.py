@@ -34,3 +34,22 @@ class TradePlan(Base):
     confidence = Column(Integer)
     status = Column(String(16), default="open")  # open | hit_t1 | hit_t2 | stopped | expired
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class Conversation(Base):
+    __tablename__ = "conversations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    title = Column(String(80), default="New chat")
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    conversation_id = Column(Integer, ForeignKey("conversations.id"), index=True, nullable=False)
+    role = Column(String(12), nullable=False)  # user | ai | scan
+    content = Column(String(12000), nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

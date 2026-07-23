@@ -125,7 +125,7 @@ export default function Workspace() {
             <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-5 items-start">
               <CandleChart symbol={symbol} analyzeSignal={analyzeReq} onAnalysis={setLatestAnalysis} />
               <div className="flex flex-col gap-5">
-                <AIChat onAnalyze={requestAnalyze} context={chatContext} />
+                <AIChat onAnalyze={requestAnalyze} onOpenSymbol={openSymbol} context={chatContext} />
                 <SymbolNews symbol={symbol} onLoaded={setNewsTitles} />
               </div>
             </div>
