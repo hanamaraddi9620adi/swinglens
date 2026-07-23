@@ -1,4 +1,41 @@
+import { useState } from 'react'
 import SourceFooter from './SourceFooter'
+
+function PositionSizer({ plan, currencySign }) {
+  const [capital, setCapital] = useState(() => Number(localStorage.getItem('sl_capital')) || 100000)
+  const [riskPct, setRiskPct] = useState(() => Number(localStorage.getItem('sl_risk_pct')) || 1)
+  const entryMid = (plan.entry_low + plan.entry_high) / 2
+  const perShareRisk = entryMid - plan.stop_loss
+  const riskAmount = capital * (riskPct / 100)
+  const qty = perShareRisk > 0 ? Math.floor(riskAmount / perShareRisk) : 0
+  const outlay = qty * entryMid
+  const save = (k, v, set) => { set(v); localStorage.setItem(k, String(v)) }
+  return (
+    <div className="mt-4 bg-ink-800/60 border border-ink-600/60 rounded-lg px-3.5 py-3">
+      <div className="text-[10px] uppercase tracking-wider text-brass-400 mb-2">Position size calculator</div>
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="text-[10px] text-mist-400">
+          Capital ({currencySign})
+          <input type="number" value={capital}
+                 onChange={(e) => save('sl_capital', Number(e.target.value) || 0, setCapital)}
+                 className="block mt-0.5 w-28 bg-ink-900 border border-ink-600 rounded px-2 py-1 text-xs text-mist-50 price" />
+        </label>
+        <label className="text-[10px] text-mist-400">
+          Risk per trade (%)
+          <input type="number" step="0.5" min="0.1" max="10" value={riskPct}
+                 onChange={(e) => save('sl_risk_pct', Number(e.target.value) || 1, setRiskPct)}
+                 className="block mt-0.5 w-20 bg-ink-900 border border-ink-600 rounded px-2 py-1 text-xs text-mist-50 price" />
+        </label>
+        <div className="price text-xs text-mist-200 leading-relaxed">
+          → <span className="text-mist-50 text-sm">{qty}</span> shares
+          <span className="text-mist-400"> · outlay ~{currencySign}{outlay.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+          · risking {currencySign}{riskAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })} if the stop hits</span>
+        </div>
+      </div>
+      <p className="text-[9px] text-mist-400/60 mt-1.5">Classic fixed-fractional sizing: shares = (capital × risk%) ÷ (entry − stop). Education, not advice.</p>
+    </div>
+  )
+}
 
 const stateLabel = (s) => (s || '').replaceAll('_', ' ').toUpperCase()
 
@@ -74,6 +111,8 @@ export default function SetupCard({ analysis, currencySign }) {
             <Tile label="Target 2" value={fmt(plan.target2)} tone="text-brass-300" />
             <Tile label="Risk : reward" value={`${plan.risk_reward} : 1`} />
           </div>
+
+          <PositionSizer plan={plan} currencySign={cs} />
 
           {/* Why the confidence is what it is */}
           <div className="mt-4 grid gap-1.5">

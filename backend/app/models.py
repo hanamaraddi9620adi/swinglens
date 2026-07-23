@@ -84,3 +84,27 @@ class Trade(Base):
     price = Column(Float, nullable=False)
     trade_date = Column(DateTime)
     imported_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class WatchItem(Base):
+    __tablename__ = "watchlist"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    symbol = Column(String(24), nullable=False)
+    name = Column(String(120))
+    added_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class Alert(Base):
+    __tablename__ = "alerts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    symbol = Column(String(24), nullable=False)
+    price = Column(Float, nullable=False)
+    direction = Column(String(6), nullable=False)  # above | below
+    status = Column(String(12), default="active")  # active | triggered
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    triggered_at = Column(DateTime)
+    triggered_price = Column(Float)

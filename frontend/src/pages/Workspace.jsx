@@ -4,6 +4,9 @@ import AIChat from '../components/AIChat'
 import CandleChart from '../components/CandleChart'
 import StockSearch from '../components/StockSearch'
 import TickerStrip from '../components/TickerStrip'
+import WatchStrip from '../components/WatchStrip'
+import AlertBell from '../components/AlertBell'
+import { api } from '../api'
 import Explore from './Explore'
 import Pulse from './Pulse'
 import Portfolio from './Portfolio'
@@ -19,6 +22,14 @@ export default function Workspace() {
   const [latestAnalysis, setLatestAnalysis] = useState(null)
   const [newsTitles, setNewsTitles] = useState([])
   const [portfolioCtx, setPortfolioCtx] = useState(null)
+  const [watchlist, setWatchlist] = useState([])
+
+  const loadWatchlist = () => api.watchlist().then((d) => setWatchlist(d.items || [])).catch(() => {})
+  useEffect(loadWatchlist, [])
+
+  const toggleWatch = async (sym) => {
+    try { await api.toggleWatch(sym, sym); loadWatchlist() } catch { /* offline */ }
+  }
 
   // "/" focuses search from anywhere
   useEffect(() => {
@@ -90,6 +101,7 @@ export default function Workspace() {
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
+            <AlertBell onOpenSymbol={openSymbol} />
             <span className="text-sm text-mist-400 hidden md:block">{user?.username}</span>
             <button
               onClick={logout}
@@ -111,25 +123,13 @@ export default function Workspace() {
           <Portfolio onOpenSymbol={openSymbol} onPortfolio={setPortfolioCtx} />
         ) : (
           <>
-            <div className="flex flex-wrap items-center gap-2 mb-4">
-              <span className="text-[11px] uppercase tracking-wider text-mist-400/70">Quick open</span>
-              {QUICK_PICKS.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setSymbol(s)}
-                  className={`price text-xs rounded-full px-3 py-1 border transition-colors ${
-                    symbol === s
-                      ? 'border-brass-400/60 text-brass-400 bg-brass-400/10'
-                      : 'border-ink-600 text-mist-400 hover:text-mist-50 hover:border-ink-500'
-                  }`}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
+            <WatchStrip items={watchlist} symbol={symbol} fallback={QUICK_PICKS}
+                        onOpen={setSymbol} onRemove={toggleWatch} />
 
             <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-5 items-start">
-              <CandleChart symbol={symbol} analyzeSignal={analyzeReq} onAnalysis={setLatestAnalysis} />
+              <CandleChart symbol={symbol} analyzeSignal={analyzeReq} onAnalysis={setLatestAnalysis}
+                           watched={watchlist.some((i) => i.symbol === symbol)}
+                           onToggleWatch={toggleWatch} />
               <div className="flex flex-col gap-5">
                 <AIChat onAnalyze={requestAnalyze} onOpenSymbol={openSymbol} context={chatContext} />
                 <SymbolNews symbol={symbol} onLoaded={setNewsTitles} />

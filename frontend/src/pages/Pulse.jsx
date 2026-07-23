@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api'
+import TrackRecord from '../components/TrackRecord'
 
 const age = (iso) => {
   if (!iso) return ''
@@ -112,6 +113,8 @@ export default function Pulse({ onOpenSymbol }) {
             </ul>
           </div>
         )}
+
+        <TrackRecord onOpenSymbol={onOpenSymbol} />
 
         {/* Top stories, readable list */}
         <div className="pointer-events-auto mt-5 bg-ink-900/85 backdrop-blur border border-ink-700 rounded-xl p-4 max-w-2xl">

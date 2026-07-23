@@ -65,6 +65,16 @@ export const api = {
     if (!res.ok) throw new Error(typeof data?.detail === 'string' ? data.detail : `Import failed (${res.status})`)
     return data
   },
+  watchlist: () => request('/api/watchlist'),
+  toggleWatch: (symbol, name) =>
+    request(`/api/watchlist/${encodeURIComponent(symbol)}?name=${encodeURIComponent(name || '')}`, { method: 'POST' }),
+  alerts: () => request('/api/alerts'),
+  createAlert: (symbol, price, direction) =>
+    request(`/api/alerts?symbol=${encodeURIComponent(symbol)}&price=${price}&direction=${direction}`, { method: 'POST' }),
+  deleteAlert: (id) => request(`/api/alerts/${id}`, { method: 'DELETE' }),
+  checkAlerts: () => request('/api/alerts/check', { method: 'POST' }),
+  trackRecord: () => request('/api/track-record', { method: 'POST' }),
+
   portfolioSummary: () => request('/api/portfolio/summary'),
   portfolioBehavior: () => request('/api/portfolio/behavior'),
   clearPortfolio: () => request('/api/portfolio', { method: 'DELETE' }),

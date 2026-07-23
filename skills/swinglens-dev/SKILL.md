@@ -74,7 +74,9 @@ Phases so far: 1 skeleton → 2 analyst engine → 2.1 chat-to-analyze →
 2.5 indicator toolbox → 2.75 markets explore → 3 newsroom+grounded chat →
 3.75 market scanner + persistent conversations → 4 portfolio mirror
 (tolerant broker import, FIFO analytics, personality engine) →
-4.5 showcase (Docker, demo mode, cloud LLM option).
+4.5 showcase (Docker, demo mode, cloud LLM option) → 4.75 alive
+(watchlist, price alerts, position sizer, and the self-grading Engine
+Track Record — plans graded pessimistically against real candles).
 Next: 5 SaaS
 (Docker, Postgres, broker APIs, SEBI-aware framing).
 

@@ -169,3 +169,29 @@ def search_symbols(query: str) -> dict:
                 continue
 
     return {"results": results[:10], "source": _source_block(query)}
+
+
+def batch_quotes(symbols: list[str]) -> dict[str, dict]:
+    """Last price + 1D change for a list of symbols, one batched call.
+    Missing symbols are simply absent from the result — callers stay honest."""
+    out: dict[str, dict] = {}
+    if not symbols:
+        return out
+    try:
+        df = yf.download(symbols, period="7d", interval="1d", group_by="ticker",
+                         progress=False, threads=True, auto_adjust=False)
+        multi = isinstance(df.columns, pd.MultiIndex)
+        for s in symbols:
+            try:
+                closes = (df[s] if multi else df)["Close"].dropna()
+                if len(closes) >= 2:
+                    last, prev = float(closes.iloc[-1]), float(closes.iloc[-2])
+                    out[s] = {"price": round(last, 2),
+                              "change_pct": round((last / prev - 1) * 100, 2) if prev else 0.0}
+                elif len(closes) == 1:
+                    out[s] = {"price": round(float(closes.iloc[-1]), 2), "change_pct": 0.0}
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return out

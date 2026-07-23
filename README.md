@@ -140,6 +140,12 @@ Design rules the whole project follows:
 2. **Every payload carries a `source` block** (provider, link, timestamp) and the UI shows it.
 3. **Every external system sits behind an adapter** (LLM, data, later brokers) so local mode and SaaS mode are the same code.
 
+**Phase 4.75 adds:** per-user ⭐ watchlist with live changes, 🔔 price
+alerts (set from any chart, checked every 5 min while the app is open),
+a position-size calculator in every setup card, and the **Engine Track
+Record** on Pulse — every Analyze plan self-graded against what price
+actually did (pessimistic same-candle rule), win rate shown publicly.
+
 ## Roadmap
 
 - **Phase 2 — Analyst Engine**: DONE (this build).

@@ -26,7 +26,7 @@ const loadSaved = () => {
   try { return JSON.parse(localStorage.getItem(STORE_KEY)) || [] } catch { return [] }
 }
 
-export default function CandleChart({ symbol, analyzeSignal = 0, onAnalysis }) {
+export default function CandleChart({ symbol, analyzeSignal = 0, onAnalysis, watched, onToggleWatch }) {
   const containerRef = useRef(null)
   const overlayRef = useRef(null)
   const chartRef = useRef(null)
@@ -51,6 +51,20 @@ export default function CandleChart({ symbol, analyzeSignal = 0, onAnalysis }) {
   const [analyzeStep, setAnalyzeStep] = useState(0)
   const [analyzeError, setAnalyzeError] = useState('')
   const [legend, setLegend] = useState(null)
+  const [alertOpen, setAlertOpen] = useState(false)
+  const [alertPrice, setAlertPrice] = useState('')
+  const [alertMsg, setAlertMsg] = useState('')
+
+  const createAlert = async () => {
+    const p = parseFloat(alertPrice)
+    if (!p || !meta) return
+    const direction = p >= meta.last_close ? 'above' : 'below'
+    try {
+      await api.createAlert(symbol, p, direction)
+      setAlertMsg(`Alert set: ${direction} ${p}`)
+      setTimeout(() => { setAlertMsg(''); setAlertOpen(false) }, 1400)
+    } catch (e) { setAlertMsg(e.message) }
+  }
   const [dialogOpen, setDialogOpen] = useState(false)
   const [activeInds, setActiveInds] = useState(loadSaved) // [{uid,id,params,label,paramSpec}]
   const [indResults, setIndResults] = useState({})        // uid -> compute result
@@ -335,7 +349,29 @@ export default function CandleChart({ symbol, analyzeSignal = 0, onAnalysis }) {
       <section className="bg-ink-900 border border-ink-700 rounded-xl p-4 sm:p-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2 className="font-[family-name:var(--font-display)] text-mist-50 text-lg font-semibold tracking-tight">{symbol}</h2>
+            <div className="flex items-center gap-1.5">
+              <h2 className="font-[family-name:var(--font-display)] text-mist-50 text-lg font-semibold tracking-tight">{symbol}</h2>
+              <button onClick={() => onToggleWatch?.(symbol)} title={watched ? 'Remove from watchlist' : 'Add to watchlist'}
+                      className={`text-lg leading-none ${watched ? 'text-brass-400' : 'text-mist-400/50 hover:text-brass-400'}`}>
+                {watched ? '★' : '☆'}
+              </button>
+              <div className="relative">
+                <button onClick={() => { setAlertOpen(!alertOpen); setAlertPrice(meta ? String(meta.last_close) : '') }}
+                        title="Set price alert" className="text-sm text-mist-400/70 hover:text-brass-400 leading-none">🔔+</button>
+                {alertOpen && (
+                  <div className="rise-in absolute z-40 top-7 left-0 bg-ink-900 border border-ink-600 rounded-lg p-3 shadow-xl shadow-black/50 w-52">
+                    <span className="text-[10px] uppercase tracking-wider text-mist-400">Alert me at price</span>
+                    <input type="number" step="any" value={alertPrice} onChange={(e) => setAlertPrice(e.target.value)}
+                           className="mt-1 w-full bg-ink-800 border border-ink-600 rounded px-2 py-1.5 text-sm text-mist-50 price focus:border-brass-400 focus:outline-none" />
+                    <button onClick={createAlert}
+                            className="mt-2 w-full text-xs bg-brass-400 hover:bg-brass-300 text-ink-950 font-semibold rounded px-2 py-1.5">
+                      Set alert
+                    </button>
+                    {alertMsg && <p className="text-[10px] text-brass-300 mt-1.5">{alertMsg}</p>}
+                  </div>
+                )}
+              </div>
+            </div>
             {meta && (
               <div className="flex items-baseline gap-3 mt-0.5">
                 <span className="price text-2xl text-mist-50">

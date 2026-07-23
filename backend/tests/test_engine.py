@@ -439,3 +439,84 @@ def test_portfolio_import_roundtrip_api(monkeypatch):
 
     d = c.delete("/api/portfolio", headers=H).json()
     assert d["deleted_holdings"] == 5 and d["deleted_trades"] == 14
+
+
+# ------------------------------------------------------- alive-phase suite
+
+def _plan(entry_high, stop, t1, t2, created_day=1):
+    from datetime import datetime
+    class P: pass
+    p = P()
+    p.entry_high, p.stop_loss, p.target1, p.target2 = entry_high, stop, t1, t2
+    p.created_at = datetime(2026, 1, created_day)
+    return p
+
+
+def _c(day, low, high):
+    from datetime import datetime, timedelta, timezone
+    base = datetime(2026, 1, 1, tzinfo=timezone.utc) + timedelta(days=day)
+    return {"time": int(base.timestamp()),
+            "low": low, "high": high, "open": low, "close": high, "volume": 1}
+
+
+def test_grading_all_paths():
+    from app.services.grading import EXPIRY_BARS, aggregate, grade_plan
+    plan = _plan(entry_high=100, stop=95, t1=110, t2=120)
+    # T1 then T2, stop never hit
+    assert grade_plan(plan, [_c(2, 99, 101), _c(3, 100, 111), _c(4, 105, 121)]) == "hit_t2"
+    # T1 hit, then stop -> pessimistic but locked win at T1
+    assert grade_plan(plan, [_c(2, 99, 101), _c(3, 100, 111), _c(4, 94, 105)]) == "hit_t1"
+    # stop before any target
+    assert grade_plan(plan, [_c(2, 99, 101), _c(3, 94, 103)]) == "stopped"
+    # same candle touches stop AND t1 -> pessimistic: stopped
+    assert grade_plan(plan, [_c(2, 99, 101), _c(3, 94, 111)]) == "stopped"
+    # never enters the zone -> expired after EXPIRY_BARS
+    far = [_c(2 + i, 150, 160) for i in range(EXPIRY_BARS + 1)]
+    assert grade_plan(plan, far) == "expired"
+    # triggered, nothing resolved -> still open
+    assert grade_plan(plan, [_c(2, 99, 101), _c(3, 98, 104)]) == "open"
+    agg = aggregate(["hit_t1", "hit_t2", "stopped", "open", "expired"])
+    assert agg["graded_closed"] == 3 and agg["win_rate"] == 66.7
+
+
+def test_watchlist_alerts_and_track_record_api(monkeypatch):
+    import uuid
+    from fastapi.testclient import TestClient
+    from app.main import app
+    import app.routers.tracking as tr
+
+    monkeypatch.setattr(tr, "batch_quotes",
+                        lambda syms: {s: {"price": 105.0, "change_pct": 1.2} for s in syms})
+    c = TestClient(app)
+    uid = uuid.uuid4().hex[:8]
+    r = c.post("/api/auth/register",
+               json={"username": f"al_{uid}", "email": f"{uid}@a.com", "password": "password123"})
+    H = {"Authorization": f"Bearer {r.json()['access_token']}"}
+
+    # watchlist toggle on/off + quotes merged
+    assert c.post("/api/watchlist/SUZLON.NS?name=Suzlon", headers=H).json()["watched"] is True
+    wl = c.get("/api/watchlist", headers=H).json()["items"]
+    assert wl[0]["symbol"] == "SUZLON.NS" and wl[0]["price"] == 105.0
+    assert c.post("/api/watchlist/SUZLON.NS", headers=H).json()["watched"] is False
+
+    # alert above 104 with price 105 -> fires; below 90 stays active
+    a1 = c.post("/api/alerts?symbol=X.NS&price=104&direction=above", headers=H).json()
+    c.post("/api/alerts?symbol=X.NS&price=90&direction=below", headers=H)
+    fired = c.post("/api/alerts/check", headers=H).json()
+    assert [f["id"] for f in fired["triggered"]] == [a1["id"]] and fired["active"] == 1
+
+    # track record: plant a plan, mock candles that hit T2
+    from app.database import SessionLocal
+    from app.models import TradePlan, User
+    from datetime import datetime
+    db = SessionLocal()
+    me = db.query(User).filter(User.email == f"{uid}@a.com").one()
+    db.add(TradePlan(user_id=me.id, symbol="Y.NS", interval="1D", setup_state="breakout_above_resistance",
+                     entry_low=99, entry_high=100, stop_loss=95, target1=110, target2=120,
+                     risk_reward=2.0, confidence=70, created_at=datetime(2026, 1, 1)))
+    db.commit(); db.close()
+    monkeypatch.setattr(tr, "get_candles",
+                        lambda s, r_, i: {"candles": [_c(2, 99, 101), _c(3, 100, 121)]})
+    out = c.post("/api/track-record", headers=H).json()
+    assert out["scorecard"]["hit_t2"] == 1 and out["scorecard"]["win_rate"] == 100.0
+    assert out["plans"][0]["status"] == "hit_t2"
