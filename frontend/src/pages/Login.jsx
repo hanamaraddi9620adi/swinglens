@@ -15,9 +15,13 @@ export default function Login() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [demo, setDemo] = useState(false)
+  const [backendDown, setBackendDown] = useState(false)
 
   useEffect(() => {
-    fetch('/api/health').then((r) => r.json()).then((d) => setDemo(!!d.demo)).catch(() => {})
+    fetch('/api/health')
+      .then((r) => r.json())
+      .then((d) => { setDemo(!!d.demo); setBackendDown(false) })
+      .catch(() => setBackendDown(true))
   }, [])
 
   const tryDemo = async () => {
@@ -81,6 +85,13 @@ export default function Login() {
             <span className="font-[family-name:var(--font-display)] text-mist-50 text-xl font-semibold">SwingLens</span>
           </div>
 
+          {backendDown && (
+            <div className="mb-5 text-xs text-brass-300 bg-brass-400/10 border border-brass-400/40 rounded-lg px-3 py-2.5 leading-relaxed">
+              <strong>Backend not reachable.</strong> Start it in another terminal:
+              <code className="price block mt-1 text-brass-400">cd backend → venv\Scripts\activate → pip install -r requirements.txt → uvicorn app.main:app --reload --port 8000</code>
+              (New phases add new Python packages — the pip install line matters after every upgrade.)
+            </div>
+          )}
           <h2 className="font-[family-name:var(--font-display)] text-mist-50 text-2xl font-semibold">
             {mode === 'login' ? 'Welcome back' : 'Create your account'}
           </h2>

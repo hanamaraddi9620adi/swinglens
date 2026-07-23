@@ -11,6 +11,23 @@ from .database import Base, SessionLocal, engine
 from .models import User
 from .routers import ai, analysis, auth_routes, indicators, markets, news, portfolio, scan, stocks, tracking
 
+def _heal_legacy_tables() -> None:
+    """Older experiment runs created 'watchlist'/'alerts' with different
+    columns (created_at / condition). create_all won't alter tables, so a
+    stale swinglens.db yields 500s. These are new low-value tables - detect
+    the mismatch and rebuild them cleanly."""
+    from sqlalchemy import inspect, text
+    insp = inspect(engine)
+    expected = {"watchlist": "added_at", "alerts": "direction"}
+    with engine.begin() as conn:
+        for table, required_col in expected.items():
+            if table in insp.get_table_names():
+                cols = {c["name"] for c in insp.get_columns(table)}
+                if required_col not in cols:
+                    conn.execute(text(f"DROP TABLE {table}"))
+
+
+_heal_legacy_tables()
 Base.metadata.create_all(bind=engine)
 
 
