@@ -9,7 +9,7 @@ from . import config
 from .auth import hash_password
 from .database import Base, SessionLocal, engine
 from .models import User
-from .routers import ai, analysis, auth_routes, indicators, markets, news, scan, stocks
+from .routers import ai, analysis, auth_routes, indicators, markets, news, portfolio, scan, stocks
 
 Base.metadata.create_all(bind=engine)
 
@@ -54,6 +54,7 @@ app.include_router(indicators.router)
 app.include_router(markets.router)
 app.include_router(news.router)
 app.include_router(scan.router)
+app.include_router(portfolio.router)
 
 
 @app.get("/api/health")

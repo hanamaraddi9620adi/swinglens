@@ -336,3 +336,106 @@ def test_cloud_adapter_selection_and_grounded_errors(monkeypatch):
     from app.services.llm.base import LLMUnavailable
     with pytest.raises(LLMUnavailable):
         llm.chat([{"role": "user", "content": "hi"}])
+
+
+# ------------------------------------------------------------- mirror suite
+
+def test_parser_handles_both_sample_broker_formats():
+    from pathlib import Path
+    from app.services.portfolio import parse_broker_file
+    root = Path(__file__).resolve().parents[2] / "sample_data"
+
+    tb = parse_broker_file((root / "groww_style_tradebook.csv").read_bytes(),
+                           "groww_style_tradebook.csv")
+    assert tb["kind"] == "tradebook"
+    assert tb["report"]["imported"] == 14 and tb["report"]["skipped"] >= 0
+    dixon = [r for r in tb["rows"] if "Dixon" in (r["name"] or "")][0]
+    assert dixon["price"] == 14250.0  # comma-in-quotes number parsed
+    assert all(r["side"] in ("BUY", "SELL") for r in tb["rows"])
+    assert all(r["trade_date"] is not None for r in tb["rows"])  # dayfirst dates
+
+    hd = parse_broker_file((root / "indmoney_style_holdings.csv").read_bytes(),
+                           "indmoney_style_holdings.csv")
+    assert hd["kind"] == "holdings"
+    rel = [r for r in hd["rows"] if r["symbol"] == "RELIANCE.NS"][0]
+    assert rel["ltp"] == 1296.6 and rel["quantity"] == 12
+    lt = [r for r in hd["rows"] if "Larsen" in (r["name"] or "")]
+    assert lt and lt[0]["symbol"] == "LT.NS"
+
+
+def test_fifo_partial_lots_exact_math():
+    from datetime import datetime
+    from app.services.portfolio import fifo_round_trips
+    D = lambda d: datetime(2026, 1, d)
+    trades = [
+        {"id": 1, "symbol": "X.NS", "symbol_raw": "X", "name": "X", "side": "BUY",  "quantity": 10, "price": 100.0, "trade_date": D(1)},
+        {"id": 2, "symbol": "X.NS", "symbol_raw": "X", "name": "X", "side": "BUY",  "quantity": 10, "price": 110.0, "trade_date": D(5)},
+        {"id": 3, "symbol": "X.NS", "symbol_raw": "X", "name": "X", "side": "SELL", "quantity": 15, "price": 120.0, "trade_date": D(20)},
+    ]
+    trips, realized = fifo_round_trips(trades)
+    assert realized == 10 * 20 + 5 * 10 == 250
+    assert [t["qty"] for t in trips] == [10, 5]
+    assert trips[0]["days"] == 19 and trips[1]["days"] == 15
+
+
+def test_behavior_profile_honesty_and_traits():
+    from app.services.portfolio import behavior_profile
+    few = [{"symbol": "A", "name": "A", "qty": 1, "buy_price": 10, "sell_price": 12,
+            "pnl": 2.0, "pnl_pct": 20.0, "days": 5}] * 3
+    p = behavior_profile(few, [])
+    assert p["ready"] is False and "5" in p["message"]
+
+    trips = []
+    for i in range(6):
+        trips.append({"symbol": "A", "name": "A", "qty": 1, "buy_price": 100,
+                      "sell_price": 104, "pnl": 4.0, "pnl_pct": 4.0, "days": 12})
+    for i in range(4):
+        trips.append({"symbol": "B", "name": "B", "qty": 1, "buy_price": 100,
+                      "sell_price": 91, "pnl": -9.0, "pnl_pct": -9.0, "days": 25})
+    p = behavior_profile(trips, [])
+    assert p["ready"] and p["round_trips"] == 10 and p["win_rate"] == 60.0
+    assert any(t["verdict"] == "Lets losers run" for t in p["traits"])
+    assert any("Swing trader" in t["verdict"] for t in p["traits"])
+    assert "🎖 10+ round trips" in p["badges"]
+
+
+def test_portfolio_import_roundtrip_api(monkeypatch):
+    import uuid
+    from pathlib import Path
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.services import portfolio as pf
+    monkeypatch.setattr(pf, "fetch_live_prices", lambda syms: {s: 100.0 for s in syms})
+    import app.routers.portfolio as pr
+    monkeypatch.setattr(pr, "fetch_live_prices", lambda syms: {s: 100.0 for s in syms})
+
+    root = Path(__file__).resolve().parents[2] / "sample_data"
+    c = TestClient(app)
+    uid = uuid.uuid4().hex[:8]
+    r = c.post("/api/auth/register",
+               json={"username": f"pf_{uid}", "email": f"{uid}@p.com", "password": "password123"})
+    H = {"Authorization": f"Bearer {r.json()['access_token']}"}
+
+    r = c.post("/api/portfolio/import", headers=H, data={"broker": "indmoney"},
+               files={"file": ("holdings.csv", (root / "indmoney_style_holdings.csv").read_bytes(), "text/csv")})
+    assert r.status_code == 200 and r.json()["kind"] == "holdings"
+
+    r = c.post("/api/portfolio/import", headers=H, data={"broker": "groww"},
+               files={"file": ("tradebook.csv", (root / "groww_style_tradebook.csv").read_bytes(), "text/csv")})
+    assert r.json()["kind"] == "tradebook" and r.json()["imported"] == 14
+
+    s = c.get("/api/portfolio/summary", headers=H).json()
+    assert s["position_count"] == 5 and s["invested"] > 0
+
+    b = c.get("/api/portfolio/behavior", headers=H).json()
+    assert b["profile"]["ready"] is True and b["profile"]["round_trips"] == 7
+    assert b["realized_pnl"] != 0
+
+    # re-import same broker replaces, not duplicates
+    c.post("/api/portfolio/import", headers=H, data={"broker": "groww"},
+           files={"file": ("tradebook.csv", (root / "groww_style_tradebook.csv").read_bytes(), "text/csv")})
+    b2 = c.get("/api/portfolio/behavior", headers=H).json()
+    assert b2["trade_count"] == 14
+
+    d = c.delete("/api/portfolio", headers=H).json()
+    assert d["deleted_holdings"] == 5 and d["deleted_trades"] == 14

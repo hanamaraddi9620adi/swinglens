@@ -72,8 +72,10 @@ price (tabular-nums), rise-in reveals, honest empty states.
 
 Phases so far: 1 skeleton → 2 analyst engine → 2.1 chat-to-analyze →
 2.5 indicator toolbox → 2.75 markets explore → 3 newsroom+grounded chat →
-3.75 market scanner + persistent conversations.
-Next: 4 portfolio mirror (CSV import, behavior analytics) → 5 SaaS
+3.75 market scanner + persistent conversations → 4 portfolio mirror
+(tolerant broker import, FIFO analytics, personality engine) →
+4.5 showcase (Docker, demo mode, cloud LLM option).
+Next: 5 SaaS
 (Docker, Postgres, broker APIs, SEBI-aware framing).
 
 Each phase delivery = working code + tests + build proof + updated README +

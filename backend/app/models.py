@@ -53,3 +53,34 @@ class ChatMessage(Base):
     role = Column(String(12), nullable=False)  # user | ai | scan
     content = Column(String(12000), nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class Holding(Base):
+    __tablename__ = "holdings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    broker = Column(String(24), default="unknown")
+    symbol_raw = Column(String(64), nullable=False)
+    symbol = Column(String(24))          # resolved Yahoo symbol, may be null
+    name = Column(String(120))
+    quantity = Column(Float, nullable=False)
+    avg_price = Column(Float, nullable=False)
+    ltp_imported = Column(Float)         # LTP from the file, if present
+    imported_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class Trade(Base):
+    __tablename__ = "trades"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    broker = Column(String(24), default="unknown")
+    symbol_raw = Column(String(64), nullable=False)
+    symbol = Column(String(24))
+    name = Column(String(120))
+    side = Column(String(4), nullable=False)   # BUY | SELL
+    quantity = Column(Float, nullable=False)
+    price = Column(Float, nullable=False)
+    trade_date = Column(DateTime)
+    imported_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

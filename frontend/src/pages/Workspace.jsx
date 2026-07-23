@@ -6,6 +6,7 @@ import StockSearch from '../components/StockSearch'
 import TickerStrip from '../components/TickerStrip'
 import Explore from './Explore'
 import Pulse from './Pulse'
+import Portfolio from './Portfolio'
 import SymbolNews from '../components/SymbolNews'
 
 const QUICK_PICKS = ['RELIANCE.NS', 'TATAMOTORS.NS', 'SUZLON.NS', 'AAPL', 'NVDA']
@@ -17,6 +18,7 @@ export default function Workspace() {
   const [analyzeReq, setAnalyzeReq] = useState(0)
   const [latestAnalysis, setLatestAnalysis] = useState(null)
   const [newsTitles, setNewsTitles] = useState([])
+  const [portfolioCtx, setPortfolioCtx] = useState(null)
 
   // "/" focuses search from anywhere
   useEffect(() => {
@@ -41,7 +43,8 @@ export default function Workspace() {
     news_titles: newsTitles.slice(0, 10).map((n) => ({
       title: n.title, source: n.source_name, confirmed: n.confirmed,
     })),
-  }), [symbol, latestAnalysis, newsTitles])
+    portfolio: portfolioCtx,
+  }), [symbol, latestAnalysis, newsTitles, portfolioCtx])
 
   const openSymbol = (sym) => {
     setSymbol(sym)
@@ -79,6 +82,7 @@ export default function Workspace() {
             {tab('pulse', 'Pulse')}
             {tab('explore', 'Explore')}
             {tab('chart', 'Chart')}
+            {tab('portfolio', 'Portfolio')}
           </nav>
 
           <div id="global-search" className="flex-1 flex justify-center">
@@ -103,6 +107,8 @@ export default function Workspace() {
           <Pulse onOpenSymbol={openSymbol} />
         ) : view === 'explore' ? (
           <Explore onOpenSymbol={openSymbol} />
+        ) : view === 'portfolio' ? (
+          <Portfolio onOpenSymbol={openSymbol} onPortfolio={setPortfolioCtx} />
         ) : (
           <>
             <div className="flex flex-wrap items-center gap-2 mb-4">

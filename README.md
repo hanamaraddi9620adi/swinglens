@@ -147,6 +147,10 @@ Design rules the whole project follows:
   2-source CONFIRMED gate, Pulse dashboard with drifting headline sky,
   per-symbol news panel, name-first typo-tolerant search, clickable ticker.
   NSE insider/bulk-deal disclosures move to Phase 4 alongside portfolios.
-- **Phase 4 — Mirror**: INDMoney/Groww CSV import, portfolio dashboard,
-  trading-behavior analytics.
+- **Phase 4 — Mirror**: DONE (this build) — tolerant broker-file import
+  (CSV/XLSX, header sniffing, column synonyms, tradebook vs holdings
+  auto-detect), live-priced holdings dashboard, FIFO realized P&L, and the
+  Trader Mirror personality with explainable traits, badges, and honest
+  minimum-sample rules. Sample files in sample_data/. The AI chat can see
+  a summary of your portfolio for grounded "how am I doing" questions.
 - **Phase 5 — SaaS**: Docker, PostgreSQL, broker API adapters, deployment.

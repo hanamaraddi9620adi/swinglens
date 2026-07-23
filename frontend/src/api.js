@@ -51,6 +51,23 @@ export const api = {
   aiMessages: (id) => request(`/api/ai/conversations/${id}/messages`),
   aiDeleteConversation: (id) => request(`/api/ai/conversations/${id}`, { method: 'DELETE' }),
   runScan: (segment, top = 5) => request(`/api/scan?segment=${encodeURIComponent(segment)}&top=${top}`),
+
+  importPortfolio: async (file, broker) => {
+    const form = new FormData()
+    form.append('file', file)
+    form.append('broker', broker)
+    const headers = {}
+    const token = getToken()
+    if (token) headers.Authorization = `Bearer ${token}`
+    const res = await fetch('/api/portfolio/import', { method: 'POST', headers, body: form })
+    let data = null
+    try { data = await res.json() } catch { /* non-JSON */ }
+    if (!res.ok) throw new Error(typeof data?.detail === 'string' ? data.detail : `Import failed (${res.status})`)
+    return data
+  },
+  portfolioSummary: () => request('/api/portfolio/summary'),
+  portfolioBehavior: () => request('/api/portfolio/behavior'),
+  clearPortfolio: () => request('/api/portfolio', { method: 'DELETE' }),
   aiStatus: () => request('/api/ai/status'),
 
   analyze: (symbol, range, interval) =>
