@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../auth'
 
 // Deterministic ambient candle field for the brand panel
@@ -14,6 +14,19 @@ export default function Login() {
   const [form, setForm] = useState({ username: '', email: '', password: '' })
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [demo, setDemo] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/health').then((r) => r.json()).then((d) => setDemo(!!d.demo)).catch(() => {})
+  }, [])
+
+  const tryDemo = async () => {
+    setError('')
+    setBusy(true)
+    try { await login('demo@swinglens.app', 'swingdemo123') }
+    catch (err) { setError(err.message) }
+    finally { setBusy(false) }
+  }
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
 
@@ -114,6 +127,17 @@ export default function Login() {
           >
             {busy ? 'One moment…' : mode === 'login' ? 'Sign in' : 'Create account'}
           </button>
+
+          {demo && (
+            <button
+              type="button"
+              onClick={tryDemo}
+              disabled={busy}
+              className="mt-3 w-full border border-brass-400/50 text-brass-400 hover:bg-brass-400/10 disabled:opacity-60 font-medium rounded-lg py-2.5 transition-colors"
+            >
+              ✨ Try the demo account
+            </button>
+          )}
 
           <button
             type="button"

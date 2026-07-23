@@ -1,4 +1,4 @@
-# SwingLens — Phase 3 (Newsroom)
+# SwingLens
 
 A local-first stock analysis platform. Phase 2 adds the Analyst Engine:
 press **Analyze** on any chart and the platform detects swing pivots, draws
@@ -22,6 +22,10 @@ Run the engine tests any time:  cd backend, activate venv, `pytest -q`.
 > Rename the app any time: the name appears in `frontend/index.html`,
 > `frontend/src/pages/Login.jsx`, `frontend/src/pages/Workspace.jsx`,
 > and `backend/app/main.py`.
+
+**Showcase / hackathon:** see **DEPLOY.md** — one-command Docker run,
+free public hosting (Render / HF Spaces), demo account mode, optional
+free cloud AI, and the 3-minute judge demo script.
 
 ---
 

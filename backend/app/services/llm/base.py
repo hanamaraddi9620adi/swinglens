@@ -34,7 +34,11 @@ def get_llm() -> LLMAdapter:
         from .ollama_adapter import OllamaAdapter
 
         return OllamaAdapter()
+    if LLM_PROVIDER == "cloud":
+        from .cloud_adapter import CloudAdapter
+
+        return CloudAdapter()
     raise LLMUnavailable(
         f"Unknown LLM_PROVIDER '{LLM_PROVIDER}'.",
-        hint="Set LLM_PROVIDER=ollama in backend/.env for local mode.",
+        hint="Set LLM_PROVIDER=ollama (local) or cloud (Groq/OpenAI-compatible) in .env.",
     )

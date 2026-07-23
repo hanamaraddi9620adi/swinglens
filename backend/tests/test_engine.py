@@ -298,3 +298,41 @@ def test_chat_history_persists(monkeypatch):
     assert [m["role"] for m in msgs] == ["user", "ai"]
     assert c.delete(f"/api/ai/conversations/{conv_id}", headers=H).json()["deleted"] == conv_id
     assert c.get(f"/api/ai/conversations/{conv_id}/messages", headers=H).status_code == 404
+
+
+# ------------------------------------------------------------ showcase suite
+
+def test_demo_seeding_and_health_flag(monkeypatch):
+    from app import config, main
+    from app.database import SessionLocal
+    from app.models import User
+    monkeypatch.setattr(config, "DEMO_MODE", True)
+    main.seed_demo_user()
+    main.seed_demo_user()  # idempotent
+    db = SessionLocal()
+    try:
+        assert db.query(User).filter(User.email == config.DEMO_EMAIL).count() == 1
+    finally:
+        db.close()
+    from fastapi.testclient import TestClient
+    c = TestClient(main.app)
+    assert c.get("/api/health").json()["demo"] is True
+
+
+def test_cloud_adapter_selection_and_grounded_errors(monkeypatch):
+    from app import config
+    from app.services.llm import base
+    monkeypatch.setattr(config, "LLM_PROVIDER", "ollama")
+    monkeypatch.setattr(base, "LLM_PROVIDER", "ollama", raising=False)
+    # factory re-imports from config module each call
+    import app.config as cfg
+    monkeypatch.setattr(cfg, "LLM_PROVIDER", "cloud")
+    llm = base.get_llm()
+    assert llm.provider_name == "cloud"
+    monkeypatch.setattr(cfg, "CLOUD_LLM_API_KEY", "")
+    st = llm.status()
+    assert st["online"] is False and "groq" in st["detail"].lower()
+    import pytest
+    from app.services.llm.base import LLMUnavailable
+    with pytest.raises(LLMUnavailable):
+        llm.chat([{"role": "user", "content": "hi"}])
