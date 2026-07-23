@@ -51,4 +51,11 @@ export const api = {
   analyze: (symbol, range, interval) =>
     request(`/api/analysis/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`, { method: 'POST' }),
   myPlans: () => request('/api/analysis/plans'),
+
+  indicatorCatalog: () => request('/api/indicators'),
+  computeIndicators: (symbol, range, interval, indicators) =>
+    request(`/api/indicators/${encodeURIComponent(symbol)}`, {
+      method: 'POST',
+      body: { range, interval, indicators },
+    }),
 }

@@ -95,3 +95,45 @@ def test_verifier_removes_invented_numbers():
     assert removed == 1
     assert "999.99" not in clean
     assert "101.00" in clean
+
+
+# ---------------------------------------------------------- indicator suite
+
+def test_every_registry_indicator_computes_without_error():
+    """Integrity test: every indicator in the catalog must run on real-shaped
+    data with default params and produce well-formed series."""
+    from app.services.indicators import REGISTRY, compute
+    candles = synthetic_breakout(300)
+    for ind_id in REGISTRY:
+        out = compute(ind_id, candles, {})
+        assert out["pane"] in ("overlay", "sub")
+        assert isinstance(out["series"], list) and out["series"], ind_id
+        for s in out["series"]:
+            assert s["type"] in ("line", "histogram")
+            for pt in s["data"]:
+                assert "time" in pt and "value" in pt and pt["value"] == pt["value"], ind_id  # no NaN
+
+
+def test_indicator_math_spot_checks():
+    from app.services.indicators import _ema, _sma, compute
+    assert _sma([1, 2, 3, 4, 5], 5)[-1] == 3
+    e = _ema([1.0] * 50, 10)
+    assert abs(e[-1] - 1.0) < 1e-9
+    candles = synthetic_breakout(300)
+    rsi_out = compute("rsi", candles, {"period": 14})
+    vals = [p["value"] for p in rsi_out["series"][0]["data"]]
+    assert all(0 <= v <= 100 for v in vals)
+    adx_out = compute("adx", candles, {})
+    assert {s["name"] for s in adx_out["series"]} == {"ADX", "+DI", "-DI"}
+    bb = compute("bollinger", candles, {})
+    up = {p["time"]: p["value"] for p in bb["series"][0]["data"]}
+    dn = {p["time"]: p["value"] for p in bb["series"][2]["data"]}
+    assert all(up[t] >= dn[t] for t in up if t in dn)
+
+
+def test_indicator_param_clamping():
+    from app.services.indicators import compute
+    candles = synthetic_breakout(100)
+    out = compute("rsi", candles, {"period": 99999, "source": "nonsense"})
+    assert out["params"]["period"] == 100      # clamped to max
+    assert out["params"]["source"] == "close"  # invalid option -> default

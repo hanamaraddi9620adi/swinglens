@@ -1,4 +1,4 @@
-# SwingLens — Phase 2
+# SwingLens — Phase 2.5 (Pro Toolbox)
 
 A local-first stock analysis platform. Phase 2 adds the Analyst Engine:
 press **Analyze** on any chart and the platform detects swing pivots, draws
@@ -8,6 +8,14 @@ narrates it in four short verified blocks — every number from math, never
 from the AI. Setups are saved for future self-grading. If Ollama is offline,
 narration falls back to a deterministic template built from the computed
 facts, so Analyze always works.
+
+**Phase 2.5 adds the pro toolbox:** a chart-type menu (10 views incl.
+Heikin Ashi, Hollow candles, Bars, Baseline, Area, Step...), and an
+**Indicators dialog (fx button)** with 27 fully configurable indicators across
+Trend / Momentum / Volatility / Volume / Levels — each with a plain-language
+description and a "how to read" note, tagged beginner / intermediate /
+advanced. Oscillators open in resizable sub-panes; overlays draw on price.
+Your active indicators + settings persist across sessions (localStorage).
 
 Run the engine tests any time:  cd backend, activate venv, `pytest -q`.
 
