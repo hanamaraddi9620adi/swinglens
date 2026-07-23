@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+@theme {
+  /* Ink terminal palette — deep blue-black, not flat black */
+  --color-ink-950: #070b14;
+  --color-ink-900: #0c1220;
+  --color-ink-800: #111a2e;
+  --color-ink-700: #1a2740;
+  --color-ink-600: #24334f;
+
+  --color-mist-400: #8b9bb4; /* muted text */
+  --color-mist-200: #c9d4e3; /* secondary text */
+  --color-mist-50: #f2f6fc;  /* bright text */
+
+  --color-brass-400: #e8b64c; /* signature accent: ticker-board brass */
+  --color-brass-300: #f2ca6e;
+
+  --color-bull-500: #22c07a;  /* up candles */
+  --color-bear-500: #ef5350;  /* down candles */
+
+  --font-display: "Space Grotesk", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
+  --font-price: "JetBrains Mono", ui-monospace, monospace;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  background: var(--color-ink-950);
+  color: var(--color-mist-200);
+  font-family: var(--font-body);
+}
+
+/* Tabular, monospace numerals everywhere a price appears — the SwingLens signature */
+.price {
+  font-family: var(--font-price);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Ambient candle field on the login page */
+@keyframes candle-breathe {
+  0%, 100% { transform: scaleY(0.55); opacity: 0.5; }
+  50% { transform: scaleY(1); opacity: 1; }
+}
+.candle-bar {
+  transform-origin: bottom;
+  animation: candle-breathe 4.5s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .candle-bar { animation: none; }
+}
+
+/* Quiet scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-ink-600) transparent;
+}
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: var(--color-ink-600); border-radius: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+:focus-visible {
+  outline: 2px solid var(--color-brass-400);
+  outline-offset: 2px;
+}

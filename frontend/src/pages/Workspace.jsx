@@ -1,0 +1,69 @@
+import { useState } from 'react'
+import { useAuth } from '../auth'
+import AIChat from '../components/AIChat'
+import CandleChart from '../components/CandleChart'
+import StockSearch from '../components/StockSearch'
+
+const QUICK_PICKS = ['RELIANCE.NS', 'TATAMOTORS.NS', 'SUZLON.NS', 'AAPL', 'NVDA']
+
+export default function Workspace() {
+  const { user, logout } = useAuth()
+  const [symbol, setSymbol] = useState('RELIANCE.NS')
+
+  return (
+    <div className="min-h-full flex flex-col">
+      <header className="sticky top-0 z-20 bg-ink-950/85 backdrop-blur border-b border-ink-700">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-3 flex items-center gap-4">
+          <div className="flex items-center gap-2.5 shrink-0">
+            <span className="w-8 h-8 rounded-lg bg-brass-400 grid place-items-center font-[family-name:var(--font-display)] font-bold text-ink-950">S</span>
+            <span className="font-[family-name:var(--font-display)] text-mist-50 font-semibold tracking-tight hidden sm:block">SwingLens</span>
+          </div>
+
+          <div className="flex-1 flex justify-center">
+            <StockSearch onSelect={setSymbol} />
+          </div>
+
+          <div className="flex items-center gap-3 shrink-0">
+            <span className="text-sm text-mist-400 hidden md:block">{user?.username}</span>
+            <button
+              onClick={logout}
+              className="text-xs text-mist-400 hover:text-mist-50 border border-ink-600 hover:border-ink-500 rounded-lg px-3 py-1.5 transition-colors"
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="flex-1 max-w-[1400px] w-full mx-auto px-4 sm:px-6 py-5">
+        {/* Quick picks */}
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <span className="text-[11px] uppercase tracking-wider text-mist-400/70">Quick open</span>
+          {QUICK_PICKS.map((s) => (
+            <button
+              key={s}
+              onClick={() => setSymbol(s)}
+              className={`price text-xs rounded-full px-3 py-1 border transition-colors ${
+                symbol === s
+                  ? 'border-brass-400/60 text-brass-400 bg-brass-400/10'
+                  : 'border-ink-600 text-mist-400 hover:text-mist-50 hover:border-ink-500'
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-5 items-start">
+          <CandleChart symbol={symbol} />
+          <AIChat />
+        </div>
+
+        <p className="mt-6 text-[11px] text-mist-400/70 leading-relaxed max-w-3xl">
+          SwingLens is a research and education tool. It is not investment advice, and it never
+          executes trades. Verify anything important at the linked sources before acting.
+        </p>
+      </main>
+    </div>
+  )
+}
