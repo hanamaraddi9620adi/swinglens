@@ -52,6 +52,10 @@ export const api = {
     request(`/api/analysis/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`, { method: 'POST' }),
   myPlans: () => request('/api/analysis/plans'),
 
+  marketSegments: () => request('/api/markets/segments'),
+  marketsOverview: () => request('/api/markets/overview'),
+  marketSegment: (id) => request(`/api/markets/${encodeURIComponent(id)}`),
+
   indicatorCatalog: () => request('/api/indicators'),
   computeIndicators: (symbol, range, interval, indicators) =>
     request(`/api/indicators/${encodeURIComponent(symbol)}`, {

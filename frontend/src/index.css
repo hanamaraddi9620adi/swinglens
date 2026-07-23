@@ -83,3 +83,10 @@ body {
   .rise-in { animation: none; }
   .analyzing { animation: none; }
 }
+
+/* Markets ticker marquee */
+.marquee-track { display: flex; width: max-content; animation: marquee 45s linear infinite; }
+.marquee-group { display: flex; }
+.marquee:hover .marquee-track { animation-play-state: paused; }
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .marquee-track { animation: none; } }

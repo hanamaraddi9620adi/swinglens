@@ -137,3 +137,38 @@ def test_indicator_param_clamping():
     out = compute("rsi", candles, {"period": 99999, "source": "nonsense"})
     assert out["params"]["period"] == 100      # clamped to max
     assert out["params"]["source"] == "close"  # invalid option -> default
+
+
+# ------------------------------------------------------------ markets suite
+
+def test_markets_batch_quotes_shaping(monkeypatch):
+    import pandas as pd
+    from app.services import markets as mk
+
+    idx = pd.date_range("2026-07-08", periods=5, freq="D")
+    def fake_download(symbols, **kw):
+        cols = pd.MultiIndex.from_product([symbols, ["Close", "Volume"]])
+        df = pd.DataFrame(index=idx, columns=cols, dtype=float)
+        for i, s in enumerate(symbols):
+            df[(s, "Close")] = [100 + i, 101 + i, 102 + i, 103 + i, 105 + i]
+            df[(s, "Volume")] = [1000] * 5
+        return df
+    monkeypatch.setattr(mk.yf, "download", fake_download)
+    mk._CACHE.clear()
+
+    seg = mk.get_segment("india_large")
+    assert seg["items"], "quotes should not be empty"
+    row = seg["items"][0]
+    assert {"symbol", "name", "price", "change", "change_pct", "volume", "spark", "currency"} <= set(row)
+    assert row["currency"] == "₹" and len(row["spark"]) == 5
+    assert seg["items"] == sorted(seg["items"], key=lambda x: x["change_pct"], reverse=True)
+
+    # cache: second call must NOT re-download
+    calls = {"n": 0}
+    monkeypatch.setattr(mk.yf, "download", lambda *a, **k: calls.__setitem__("n", calls["n"] + 1) or fake_download(a[0]))
+    assert mk.get_segment("india_large")["items"]
+    assert calls["n"] == 0
+
+    import pytest
+    with pytest.raises(KeyError):
+        mk.get_segment("moon_rocks")

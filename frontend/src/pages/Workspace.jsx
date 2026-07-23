@@ -3,20 +3,39 @@ import { useAuth } from '../auth'
 import AIChat from '../components/AIChat'
 import CandleChart from '../components/CandleChart'
 import StockSearch from '../components/StockSearch'
+import TickerStrip from '../components/TickerStrip'
+import Explore from './Explore'
 
 const QUICK_PICKS = ['RELIANCE.NS', 'TATAMOTORS.NS', 'SUZLON.NS', 'AAPL', 'NVDA']
 
 export default function Workspace() {
   const { user, logout } = useAuth()
+  const [view, setView] = useState('explore')
   const [symbol, setSymbol] = useState('RELIANCE.NS')
   const [analyzeReq, setAnalyzeReq] = useState(0)
 
-  // Called when the chat resolves an "analyse <stock>" request:
-  // switch the chart and fire the real pipeline.
+  const openSymbol = (sym) => {
+    setSymbol(sym)
+    setView('chart')
+  }
+
+  // Chat-resolved "analyse <stock>": switch chart + fire the pipeline.
   const requestAnalyze = (sym) => {
     setSymbol(sym)
+    setView('chart')
     setAnalyzeReq((n) => n + 1)
   }
+
+  const tab = (id, label) => (
+    <button
+      onClick={() => setView(id)}
+      className={`text-sm px-3 py-1.5 rounded-lg transition-colors ${
+        view === id ? 'text-brass-400 bg-brass-400/10' : 'text-mist-400 hover:text-mist-50'
+      }`}
+    >
+      {label}
+    </button>
+  )
 
   return (
     <div className="min-h-full flex flex-col">
@@ -27,8 +46,13 @@ export default function Workspace() {
             <span className="font-[family-name:var(--font-display)] text-mist-50 font-semibold tracking-tight hidden sm:block">SwingLens</span>
           </div>
 
+          <nav className="flex items-center gap-1 shrink-0">
+            {tab('explore', 'Explore')}
+            {tab('chart', 'Chart')}
+          </nav>
+
           <div className="flex-1 flex justify-center">
-            <StockSearch onSelect={setSymbol} />
+            <StockSearch onSelect={openSymbol} />
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
@@ -41,31 +65,37 @@ export default function Workspace() {
             </button>
           </div>
         </div>
+        <TickerStrip />
       </header>
 
       <main className="flex-1 max-w-[1400px] w-full mx-auto px-4 sm:px-6 py-5">
-        {/* Quick picks */}
-        <div className="flex flex-wrap items-center gap-2 mb-4">
-          <span className="text-[11px] uppercase tracking-wider text-mist-400/70">Quick open</span>
-          {QUICK_PICKS.map((s) => (
-            <button
-              key={s}
-              onClick={() => setSymbol(s)}
-              className={`price text-xs rounded-full px-3 py-1 border transition-colors ${
-                symbol === s
-                  ? 'border-brass-400/60 text-brass-400 bg-brass-400/10'
-                  : 'border-ink-600 text-mist-400 hover:text-mist-50 hover:border-ink-500'
-              }`}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
+        {view === 'explore' ? (
+          <Explore onOpenSymbol={openSymbol} />
+        ) : (
+          <>
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <span className="text-[11px] uppercase tracking-wider text-mist-400/70">Quick open</span>
+              {QUICK_PICKS.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setSymbol(s)}
+                  className={`price text-xs rounded-full px-3 py-1 border transition-colors ${
+                    symbol === s
+                      ? 'border-brass-400/60 text-brass-400 bg-brass-400/10'
+                      : 'border-ink-600 text-mist-400 hover:text-mist-50 hover:border-ink-500'
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-5 items-start">
-          <CandleChart symbol={symbol} analyzeSignal={analyzeReq} />
-          <AIChat onAnalyze={requestAnalyze} />
-        </div>
+            <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-5 items-start">
+              <CandleChart symbol={symbol} analyzeSignal={analyzeReq} />
+              <AIChat onAnalyze={requestAnalyze} />
+            </div>
+          </>
+        )}
 
         <p className="mt-6 text-[11px] text-mist-400/70 leading-relaxed max-w-3xl">
           SwingLens is a research and education tool. It is not investment advice, and it never
