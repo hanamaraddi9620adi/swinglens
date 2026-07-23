@@ -1,9 +1,15 @@
-# SwingLens — Phase 1
+# SwingLens — Phase 2
 
-A local-first stock analysis platform. Phase 1 delivers the living skeleton:
-multi-user login, live NSE/BSE/US candlestick charts (15m / 1H / 1D / 1W) with
-source transparency on every data payload, and a local AI assistant running
-through Ollama on your own machine.
+A local-first stock analysis platform. Phase 2 adds the Analyst Engine:
+press **Analyze** on any chart and the platform detects swing pivots, draws
+support/resistance zones and trendlines ON the chart, marks the breakout,
+computes an entry/stop/target plan with an explainable confidence score, and
+narrates it in four short verified blocks — every number from math, never
+from the AI. Setups are saved for future self-grading. If Ollama is offline,
+narration falls back to a deterministic template built from the computed
+facts, so Analyze always works.
+
+Run the engine tests any time:  cd backend, activate venv, `pytest -q`.
 
 > Rename the app any time: the name appears in `frontend/index.html`,
 > `frontend/src/pages/Login.jsx`, `frontend/src/pages/Workspace.jsx`,
@@ -124,9 +130,7 @@ Design rules the whole project follows:
 
 ## Roadmap
 
-- **Phase 2 — Analyst Engine**: support/resistance zones, trendlines, breakout
-  detection drawn ON the chart, entry/stop/target setup card, AI narration
-  with verifier pass, prediction self-grading.
+- **Phase 2 — Analyst Engine**: DONE (this build).
 - **Phase 3 — Newsroom**: real-time RSS news with 2-source corroboration, NSE
   insider/bulk-deal disclosures, animated news dashboard.
 - **Phase 4 — Mirror**: INDMoney/Groww CSV import, portfolio dashboard,

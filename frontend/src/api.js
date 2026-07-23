@@ -47,4 +47,8 @@ export const api = {
 
   aiChat: (message) => request('/api/ai/chat', { method: 'POST', body: { message } }),
   aiStatus: () => request('/api/ai/status'),
+
+  analyze: (symbol, range, interval) =>
+    request(`/api/analysis/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`, { method: 'POST' }),
+  myPlans: () => request('/api/analysis/plans'),
 }
