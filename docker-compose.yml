@@ -6,9 +6,10 @@ services:
     environment:
       - DEMO_MODE=1
       - SECRET_KEY=${SECRET_KEY:-change-me-for-real-deployments}
-      # Optional cloud AI (Groq free tier) since Ollama isn't in the container:
-      # - LLM_PROVIDER=cloud
-      # - CLOUD_LLM_API_KEY=your_free_groq_key
+      # Optional hosted AI:
+      # - LLM_PROVIDER=gemini
+      # - CLOUD_LLM_MODEL=gemini-2.0-flash
+      # - CLOUD_LLM_API_KEY=your_provider_key
     volumes:
       - swinglens-data:/data
 volumes:

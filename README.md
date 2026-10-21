@@ -61,7 +61,7 @@ Technical + portfolio + sentiment analysis. One screen. Free. Accountable.
 
 | Principle | How SwingLens enforces it |
 |---|---|
-| **Numbers come from data or math, never from the AI** | The engine computes pivots, zones, breakouts, entry/stop/target and confidence in deterministic Python. The LLM only *narrates* the computed facts — and works offline via Ollama, or falls back to templates. |
+| **Numbers come from data or math, never from the AI** | The engine computes pivots, zones, breakouts, entry/stop/target and confidence in deterministic Python. The hosted LLM only *narrates* the computed facts, or the app falls back to templates. |
 | **Every payload carries a `source` block** | Provider, link, timestamp — shown in the UI next to every chart, headline, and plan. |
 | **Accountability by default** | Every Analyze plan is saved and self-graded against what price actually did (pessimistic same-candle rule). Win rate is public on the Pulse page. |
 | **Local-first, privacy-first** | Your portfolio, watchlist and chats live in a local SQLite file. Nothing leaves your machine unless you deploy it. |
@@ -92,7 +92,7 @@ Today (hackathon)                Next                              SaaS
 ───────────────────────────────  ────────────────────────────────  ──────────────────────────────
 SQLite, single machine           PostgreSQL, Docker (DONE)         Multi-tenant hosted product
 yfinance adapter                 NSE/broker API adapters           Real-time websockets, paid data
-Ollama local LLM                 Cloud LLM adapter (DONE, Groq)    Fine-tuned narration models
+Hosted LLM adapters (Gemini/Groq/xAI)                              Fine-tuned narration models
 Single-user auth works           Multi-user from day one (DONE)    Teams, shared workspaces
 Engine track record per user     Public leaderboards               Verified strategy marketplace
 ```
@@ -131,9 +131,9 @@ REST API (`/api/*`) — if the API shape changes, we talk first.
 |---|---|---|
 | Python 3.11+ | python.org | Tick **"Add Python to PATH"** in the installer |
 | Node.js 20 LTS | nodejs.org | Includes npm |
-| Ollama | ollama.com | Optional — narration falls back to templates without it |
+| Gemini / Groq / xAI API key | provider console | Optional — narration falls back to templates without it |
 
-After installing Ollama: `ollama pull qwen2.5:7b-instruct` (one-time, ~5 GB).
+See [DEPLOY.md](DEPLOY.md) for provider key setup and public deployment.
 
 ## Run it
 
@@ -190,8 +190,8 @@ returning a Promise as its cleanup. Effects must return a function or nothing.
 **PowerShell refuses to activate the venv** — use `run-backend.bat` instead,
 or run once: `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
 
-**AI panel shows "Ollama isn't ready"** — make sure the Ollama app is running
-and the model is pulled: `ollama pull qwen2.5:7b-instruct`. Without it,
+**AI panel shows that cloud AI is unavailable** — check `LLM_PROVIDER`,
+`GEMINI_API_KEYS`, and `GROQ_API_KEYS` in the backend environment. Without a key,
 narration uses deterministic templates — Analyze still works.
 
 **A stock shows "No data found"** — Indian stocks need the exchange suffix:

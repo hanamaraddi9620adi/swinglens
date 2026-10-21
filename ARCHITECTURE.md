@@ -127,7 +127,7 @@ f(model count, inter-model dispersion, earnings stability, data quality).
 
 ## G. AI architecture
 
-LLM (Ollama/cloud adapter, existing) receives the computed payload and may
+LLM (Gemini/Groq/xAI cloud adapter, existing) receives the computed payload and may
 only *word* the thesis blocks; output is verified against the numbers
 (existing narration verification). No LLM → deterministic template thesis.
 No number originates in the model, ever.

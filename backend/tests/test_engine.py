@@ -322,20 +322,126 @@ def test_demo_seeding_and_health_flag(monkeypatch):
 def test_cloud_adapter_selection_and_grounded_errors(monkeypatch):
     from app import config
     from app.services.llm import base
-    monkeypatch.setattr(config, "LLM_PROVIDER", "ollama")
-    monkeypatch.setattr(base, "LLM_PROVIDER", "ollama", raising=False)
+    monkeypatch.setattr(config, "LLM_PROVIDER", "gemini")
+    monkeypatch.setattr(base, "LLM_PROVIDER", "gemini", raising=False)
     # factory re-imports from config module each call
     import app.config as cfg
     monkeypatch.setattr(cfg, "LLM_PROVIDER", "cloud")
     llm = base.get_llm()
     assert llm.provider_name == "cloud"
     monkeypatch.setattr(cfg, "CLOUD_LLM_API_KEY", "")
+    monkeypatch.setattr(cfg, "GROQ_API_KEYS", "")
+    monkeypatch.setattr(cfg, "GEMINI_API_KEYS", "")
+    monkeypatch.setattr(cfg, "XAI_API_KEYS", "")
     st = llm.status()
     assert st["online"] is False and "groq" in st["detail"].lower()
     import pytest
     from app.services.llm.base import LLMUnavailable
     with pytest.raises(LLMUnavailable):
         llm.chat([{"role": "user", "content": "hi"}])
+
+
+def test_cloud_provider_pools_use_separate_models_and_skip_empty_xai(monkeypatch):
+    import app.config as cfg
+    from app.services.llm import cloud_adapter
+
+    monkeypatch.setattr(cfg, "LLM_PROVIDER", "gemini,groq,xai")
+    monkeypatch.setattr(cfg, "GEMINI_API_KEYS", "gemini-test-key")
+    monkeypatch.setattr(cfg, "GROQ_API_KEYS", "groq-test-key")
+    monkeypatch.setattr(cfg, "XAI_API_KEYS", "")
+    monkeypatch.setattr(cfg, "CLOUD_LLM_API_KEY", "")
+    monkeypatch.setattr(cfg, "GEMINI_MODEL", "gemini-test-model")
+    monkeypatch.setattr(cfg, "GROQ_MODEL", "groq-test-model")
+    cloud_adapter._key_cooldowns.clear()
+    llm = cloud_adapter.CloudAdapter()
+    status = llm.status()
+    assert status["providers"] == ["gemini", "groq"]
+    assert status["configured_keys"] == 2
+    assert status["models"] == {
+        "gemini": "gemini-test-model",
+        "groq": "groq-test-model",
+    }
+
+    class Response:
+        status_code = 200
+
+        def json(self):
+            return {"candidates": [{"content": {"parts": [{"text": "gemini reply"}]}}]}
+
+    calls = []
+    monkeypatch.setattr(
+        cloud_adapter.httpx,
+        "post",
+        lambda url, **kwargs: (calls.append((url, kwargs)) or Response()),
+    )
+    assert llm.chat([{"role": "user", "content": "hello"}]) == "gemini reply"
+    assert "gemini-test-model" in calls[0][0]
+
+
+def test_groq_provider_uses_groq_model(monkeypatch):
+    import app.config as cfg
+    from app.services.llm import cloud_adapter
+
+    monkeypatch.setattr(cfg, "LLM_PROVIDER", "groq")
+    monkeypatch.setattr(cfg, "GEMINI_API_KEYS", "")
+    monkeypatch.setattr(cfg, "GROQ_API_KEYS", "groq-test-key")
+    monkeypatch.setattr(cfg, "XAI_API_KEYS", "")
+    monkeypatch.setattr(cfg, "CLOUD_LLM_API_KEY", "")
+    monkeypatch.setattr(cfg, "GROQ_MODEL", "groq-test-model")
+    cloud_adapter._key_cooldowns.clear()
+
+    class Response:
+        status_code = 200
+
+        def json(self):
+            return {"choices": [{"message": {"content": "groq reply"}}]}
+
+    calls = []
+    monkeypatch.setattr(
+        cloud_adapter.httpx,
+        "post",
+        lambda url, **kwargs: (calls.append((url, kwargs)) or Response()),
+    )
+    llm = cloud_adapter.CloudAdapter()
+    assert llm.chat([{"role": "user", "content": "hello"}]) == "groq reply"
+    assert calls[0][1]["json"]["model"] == "groq-test-model"
+
+
+def test_ai_chat_endpoint_uses_cloud_adapter(monkeypatch):
+    from fastapi.testclient import TestClient
+    import app.config as cfg
+    import app.routers.ai as ai_mod
+    from app.main import app
+    import uuid
+
+    monkeypatch.setattr(cfg, "LLM_PROVIDER", "gemini")
+    monkeypatch.setattr(cfg, "GEMINI_API_KEYS", "gemini-test-key")
+    monkeypatch.setattr(cfg, "GROQ_API_KEYS", "")
+    monkeypatch.setattr(cfg, "XAI_API_KEYS", "")
+    monkeypatch.setattr(cfg, "CLOUD_LLM_API_KEY", "")
+    from app.services.llm import cloud_adapter
+    cloud_adapter._key_cooldowns.clear()
+
+    class Response:
+        status_code = 200
+
+        def json(self):
+            return {"candidates": [{"content": {"parts": [{"text": "cloud endpoint reply"}]}}]}
+
+    monkeypatch.setattr(cloud_adapter.httpx, "post", lambda *args, **kwargs: Response())
+    c = TestClient(app)
+    uid = uuid.uuid4().hex[:8]
+    token = c.post(
+        "/api/auth/register",
+        json={"username": f"llm_{uid}", "email": f"{uid}@t.com", "password": "password123"},
+    ).json()["access_token"]
+    response = c.post(
+        "/api/ai/chat",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"message": "Hello, explain how SwingLens works"},
+    )
+    assert response.status_code == 200
+    assert response.json()["reply"] == "cloud endpoint reply"
 
 
 # ------------------------------------------------------------- mirror suite

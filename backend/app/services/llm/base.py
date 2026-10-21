@@ -1,8 +1,8 @@
 """LLM adapter contract.
 
 Every part of the platform talks to AI through this interface only.
-Local mode = OllamaAdapter. SaaS mode = a cloud adapter implementing
-the same two methods. Nothing else in the codebase changes.
+Cloud providers implement the same two methods. Nothing else in the codebase
+needs to know which provider is configured.
 """
 from abc import ABC, abstractmethod
 
@@ -21,24 +21,25 @@ class LLMAdapter(ABC):
 
 
 class LLMUnavailable(Exception):
-    def __init__(self, message: str, hint: str = ""):
+    def __init__(self, message: str, hint: str = "", *, category: str = "unavailable",
+                 provider: str = "", model: str = "", status_code: int | None = None):
         self.message = message
         self.hint = hint
+        self.category = category
+        self.provider = provider
+        self.model = model
+        self.status_code = status_code
         super().__init__(message)
 
 
 def get_llm() -> LLMAdapter:
+    from .cloud_adapter import CloudAdapter
+
     from ...config import LLM_PROVIDER
-
-    if LLM_PROVIDER == "ollama":
-        from .ollama_adapter import OllamaAdapter
-
-        return OllamaAdapter()
-    if LLM_PROVIDER == "cloud":
-        from .cloud_adapter import CloudAdapter
-
+    configured_providers = {provider.strip() for provider in LLM_PROVIDER.split(",")}
+    if configured_providers & {"gemini", "groq", "xai", "cloud"}:
         return CloudAdapter()
     raise LLMUnavailable(
         f"Unknown LLM_PROVIDER '{LLM_PROVIDER}'.",
-        hint="Set LLM_PROVIDER=ollama (local) or cloud (Groq/OpenAI-compatible) in .env.",
+        hint="Set LLM_PROVIDER to gemini, groq, or xai in the environment.",
     )

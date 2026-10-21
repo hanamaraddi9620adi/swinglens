@@ -20,7 +20,7 @@
 | News with 2-source CONFIRMED gate | `news.py` |
 | Portfolio import (CSV/XLSX sniffing, FIFO P&L, Mirror) | `portfolio.py` |
 | Watchlist, price alerts, position-size calc | `tracking.py` |
-| AI chat (Ollama/cloud adapter, verified narration) | `llm/*`, `narration.py` |
+| AI chat (Gemini/Groq/xAI cloud adapter, verified narration) | `llm/*`, `narration.py` |
 | Pulse / Explore dashboards, ticker, global search | pages/components |
 | Error boundaries, backend-down banner, disclaimers | `ErrorBoundary.jsx`, pages |
 

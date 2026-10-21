@@ -1,13 +1,13 @@
 ---
 name: swinglens-dev
-description: Development conventions, architecture laws, and agent hygiene for building SwingLens (a local-first swing-trading analysis platform - FastAPI + React + lightweight-charts v5 + Ollama). ALWAYS use this skill when working on SwingLens or any stock/trading platform code in this workspace - including new features, bug fixes, indicators, news, portfolio, chart, AI-chat, or SaaS-migration tasks - even if the user doesn't mention the skill. Also trigger for writing "master prompts", planning phases, or reviewing agent output for this project.
+description: Development conventions, architecture laws, and agent hygiene for building SwingLens (a hosted swing-trading analysis platform - FastAPI + React + lightweight-charts v5). ALWAYS use this skill when working on SwingLens or any stock/trading platform code in this workspace - including new features, bug fixes, indicators, news, portfolio, chart, AI-chat, or SaaS-migration tasks - even if the user doesn't mention the skill. Also trigger for writing "master prompts", planning phases, or reviewing agent output for this project.
 ---
 
 # SwingLens Development Skill
 
 You are building SwingLens: a beginner-to-advanced stock research platform
 (Indian + US markets) that reproduces how a human analyst annotates a chart.
-Local-first (Ollama, SQLite, free data), architected to flip to SaaS.
+Hosted LLMs, SQLite, free data, architected for public deployment.
 
 ## The Five Laws (never violate these)
 
@@ -54,7 +54,7 @@ backend/app/
     indicators.py      # registry: 27 indicators w/ education metadata
     news.py            # RSS + 2-source CONFIRMED corroboration gate
     narration.py       # LLM narration + deterministic number verifier
-    llm/               # adapter seam: Ollama now, cloud later
+    llm/               # adapter seam for hosted providers
 frontend/src/
   api.js               # every backend call
   components/          # CandleChart (types+panes+annotations), SetupCard,

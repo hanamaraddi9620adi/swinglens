@@ -4,7 +4,7 @@ The LLM receives ONLY the computed facts JSON and must return four short
 labeled blocks (the reel-presenter structure): pattern, why, confirmation,
 invalidation. A deterministic verifier then checks every number in the
 narration against the fact set — any sentence containing a number we did
-not compute is removed. If Ollama is offline, a template narration built
+not compute is removed. If cloud AI is unavailable, a template narration built
 purely from the facts is returned instead, so Analyze always works.
 """
 from __future__ import annotations
@@ -136,6 +136,6 @@ def narrate(payload: dict) -> tuple[dict, dict]:
     except (LLMUnavailable, json.JSONDecodeError, ValueError) as exc:
         return _fallback(payload), {
             "status": "template_fallback",
-            "detail": f"Local AI unavailable or returned invalid JSON ({type(exc).__name__}); "
+            "detail": f"Cloud AI unavailable or returned invalid JSON ({type(exc).__name__}); "
                       "narration generated deterministically from computed facts.",
         }

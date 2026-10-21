@@ -37,7 +37,7 @@ backend/
         ├── portfolio.py       CSV/XLSX sniffing import, FIFO P&L
         ├── scanner.py         batch-runs the engine over universes
         ├── narration.py       4-block verified narration (+ template fallback)
-        └── llm/               base / ollama_adapter / cloud_adapter
+        └── llm/               base / cloud_adapter
 ```
 
 ## Your non-negotiables
@@ -47,7 +47,7 @@ backend/
    it never calculates.
 2. **Every payload carries a `source` block** — provider, link, timestamp.
 3. **Every external system sits behind an adapter** (yfinance today, NSE /
-   broker APIs tomorrow; Ollama today, cloud LLM tomorrow).
+   broker APIs tomorrow; hosted cloud LLMs are used today).
 4. **Routers stay thin.** Logic goes in `services/` where it's testable.
 5. **`pytest -q` stays green.** Engine math changes need a test.
 

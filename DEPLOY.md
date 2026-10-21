@@ -4,12 +4,11 @@ Three ways to put SwingLens in front of judges, from fastest to most public.
 Everything here uses free tiers only. The app is a **single service**: the
 backend serves both the API and the built frontend on one port.
 
-> LLM note: cloud hosts can't run Ollama. Either (a) leave the AI chat in its
-> honest offline state — **the analyst engine, scanner, indicators, Explore,
-> Pulse news, and setup cards all work with zero LLM** (they're math + real
-> data), or (b) plug in a free cloud model: get a free API key from Groq
-> (console.groq.com), then set `LLM_PROVIDER=cloud` and
-> `CLOUD_LLM_API_KEY=...`. Costs ₹0 on their free tier.
+> LLM note: the deployed app uses hosted APIs only; it does not require
+> Ollama. Choose Gemini (recommended), Groq, or xAI and set
+> `LLM_PROVIDER` plus provider key pools. Without a key, the analyst engine,
+> scanner, indicators, Explore, Pulse news, and setup cards still work and
+> narration uses deterministic templates.
 
 ---
 
@@ -39,7 +38,12 @@ No Docker on the hackathon machine? The manual path in README.md
 4. Add environment variables:
    - `DEMO_MODE=1`
    - `SECRET_KEY=<any long random string>`
-   - optional: `LLM_PROVIDER=cloud`, `CLOUD_LLM_API_KEY=<free Groq key>`
+   - `LLM_PROVIDER=gemini,groq`
+   - `GEMINI_MODEL=gemini-3.8-flash`
+   - `GROQ_MODEL=llama-3.3-70b-versatile`
+   - `GEMINI_API_KEYS=<key1>,<key2>`
+   - `GROQ_API_KEYS=<key1>,<key2>`
+   - `XAI_API_KEYS=<key1>,<key2>`
 5. Deploy → you get `https://your-app.onrender.com` that opens on anyone's
    laptop, exactly like a Vercel link.
 
@@ -68,10 +72,53 @@ Settings → Variables. Free CPU Spaces don't sleep the way Render does.
 | `DEMO_PASSWORD` | swingdemo123 | demo account password |
 | `SECRET_KEY` | dev value | JWT signing — set a real one publicly |
 | `DATABASE_URL` | sqlite file | Postgres URL works unchanged (SaaS phase) |
-| `LLM_PROVIDER` | ollama | `cloud` for OpenAI-compatible APIs |
-| `CLOUD_LLM_BASE_URL` | Groq endpoint | any /chat/completions provider |
-| `CLOUD_LLM_API_KEY` | (empty) | free at console.groq.com |
-| `CLOUD_LLM_MODEL` | llama-3.1-8b-instant | provider model name |
+| `LLM_PROVIDER` | gemini,groq | Ordered failover providers |
+| `GEMINI_API_KEYS` | (empty) | Comma-separated Gemini keys |
+| `GROQ_API_KEYS` | (empty) | Comma-separated Groq keys |
+| `XAI_API_KEYS` | (empty) | Comma-separated xAI keys |
+| `CLOUD_LLM_API_KEY` | (empty) | Legacy single-key fallback |
+| `GEMINI_MODEL` | gemini-3.8-flash | Gemini model |
+| `GROQ_MODEL` | llama-3.3-70b-versatile | Groq model |
+| `CLOUD_LLM_MODEL` | gemini-3.8-flash | Legacy model variable |
+| `CLOUD_LLM_BASE_URL` | Groq endpoint | Used by legacy `LLM_PROVIDER=cloud` |
+| `CLOUD_LLM_PROVIDER` | groq | Provider used by legacy `cloud` mode |
+
+## API keys and public deployment
+
+### Gemini (recommended free option)
+
+1. Open [Google AI Studio](https://aistudio.google.com/apikey) and sign in.
+2. Select **Create API key** and copy it immediately.
+3. In Render → your service → **Environment**, add
+   `GEMINI_API_KEYS=<paste-key-1>,<paste-key-2>`. Keep the keys comma-separated
+   with no spaces. Add `LLM_PROVIDER=gemini,groq` to enable failover.
+4. Save changes and redeploy. Do not commit the key or add it to Vite.
+
+### Groq (OpenAI-compatible alternative)
+
+1. Open [Groq Console](https://console.groq.com/keys), sign in, and create an
+   API key.
+2. Add the key to `GROQ_API_KEYS=<paste-key-1>,<paste-key-2>` and include
+   `groq` in `LLM_PROVIDER`.
+   The adapter selects `llama-3.1-8b-instant` automatically.
+
+### xAI / Grok
+
+1. Create an API key in the [xAI Console](https://console.x.ai/).
+2. xAI is not included in the recommended configuration and is not required
+   for failover. Do not add `xai` to `LLM_PROVIDER`.
+3. xAI availability and pricing are controlled by xAI; do not assume it has
+   the same free allowance as Gemini or Groq.
+
+### Vercel frontend with Render backend
+
+This repository's Docker deployment serves both pieces together, so the
+simplest public deployment is Render alone. If you already have a Vercel
+frontend, deploy the backend on Render and configure the frontend's API base
+URL only if you add one; the current frontend intentionally uses relative
+`/api` paths and therefore expects the same-origin Docker deployment. A
+Vercel static frontend cannot proxy these paths to Render without a Vercel
+rewrite or a frontend API-base change. Do not paste LLM keys into Vercel.
 
 ---
 

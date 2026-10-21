@@ -240,10 +240,10 @@ export default function AIChat({ onAnalyze, onOpenSymbol, context }) {
         )}
 
         <div className={`flex-1 overflow-y-auto px-4 py-3 space-y-3 ${full ? 'max-w-3xl w-full mx-auto' : ''}`}>
-          {!status ? <p className="text-xs text-mist-400">Checking Ollama…</p>
+          {!status ? <p className="text-xs text-mist-400">Checking cloud AI…</p>
           : !online ? (
             <div className="text-xs text-mist-400 leading-relaxed bg-ink-800 border border-ink-600 rounded-lg p-3">
-              <p className="text-mist-200 font-medium mb-1">Ollama isn't ready yet</p>
+              <p className="text-mist-200 font-medium mb-1">Cloud AI isn't configured yet</p>
               <p>{status.detail}</p>
             </div>
           ) : messages.length === 0 ? (
@@ -301,7 +301,7 @@ export default function AIChat({ onAnalyze, onOpenSymbol, context }) {
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={online ? 'Ask anything — or "scan the market"…' : 'Start Ollama to chat'}
+            placeholder={online ? 'Ask anything — or "scan the market"…' : 'Add a cloud AI key to chat'}
             disabled={!online || busy}
             className="flex-1 bg-ink-800 border border-ink-600 rounded-lg px-3 py-2 text-sm text-mist-50 placeholder-mist-400/50 focus:border-brass-400 focus:outline-none disabled:opacity-50"
           />

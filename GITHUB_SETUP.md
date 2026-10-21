@@ -31,7 +31,7 @@ and under **Releases** if you promote them.
 
 | Tag | What it is |
 |---|---|
-| phase-1 | Skeleton: auth, live charts, Ollama |
+| phase-1 | Skeleton: auth, live charts, hosted LLM adapter |
 | phase-2 | Analyst Engine drawn on the chart |
 | phase-2.1 | Chat triggers the real pipeline |
 | phase-2.5 | 27 indicators + 10 chart types |
