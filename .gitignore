@@ -1,9 +1,15 @@
 node_modules/
 dist/
 venv/
+.venv/
 __pycache__/
 *.pyc
 .env
+.env.*
+!.env.example
 *.db
-
+*.db-*
 *.log
+.vercel/
+.pytest_cache/
+work/

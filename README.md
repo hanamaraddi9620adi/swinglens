@@ -1,214 +1,92 @@
-# SwingLens — by Team Hive
+# SwingLens
 
-> **See the setup. Trust the math. Swing trade with clarity.**
+SwingLens is a stock research application with a React interface, FastAPI backend,
+computed chart analysis, market scans, portfolio imports, research reports, thesis
+tracking and a Gemini/Groq chatbot. Market numbers come from data and calculations;
+AI explains the supplied facts. Research and education only, not investment advice.
 
-SwingLens is a local-first stock analysis platform that turns raw market data
-into **explainable swing-trading setups**. Press **Analyze** on any chart and
-the engine detects swing pivots, draws support/resistance zones and trendlines
-ON the chart, marks the breakout, computes an entry/stop/target plan with an
-explainable confidence score, and narrates it in four short verified blocks —
-**every number comes from math, never from the AI.** Every setup is saved and
-self-graded against what price actually did, so the engine's public track
-record is always honest.
+## Run locally
 
-**Team repo:** https://github.com/lochangowda10/hive-hackathon
-**Hackathon disclosure + judge Q&A:** [HACKATHON.md](HACKATHON.md)
+Requires Python 3.12+ and Node.js 22+.
 
-> **Disclaimer:** SwingLens is a research and education tool — not investment
-> advice, and not a SEBI-registered advisory. It never executes trades.
-
----
-
-## The real-world problem
-
-Retail swing traders in India (and everywhere) face a rigged toolkit:
-
-- **Broker apps** (INDmoney, Groww, Zerodha) have great charts and data —
-  but their business model is order flow. Their incentive is that you
-  *trade more*, not that you *trade better*.
-- **Strategy platforms** (investing.com and peers) lock analysis behind
-  paywalls and never publish whether their "ideas" worked.
-- **Free tools** (Chartink, TradingView free, Screener) give you charts and
-  200 indicators — but zero opinion, zero plan, and zero accountability.
-- **News** arrives as an unstructured dump; the trader must guess which
-  headline is the catalyst behind a move.
-- **"AI stock picker" apps** hallucinate numbers, never show their source,
-  and never admit when they were wrong.
-
-Result: retail traders stitch together 3–4 apps, overpay, under-analyze,
-or get misled — and nobody in the chain is accountable for a single call.
-
-## The all-in-one answer
-
-SwingLens combines the three things traders pay for or stitch together —
-**without the conflicts of interest:**
-
-1. **Broker-grade charting & portfolio context** — full chart detail, 10
-   chart types, 27 indicators, holdings import, watchlists, alerts —
-   but **deliberately no buy/sell buttons**. We are not a broker; we never
-   profit from your trades. Zero conflict of interest.
-2. **A strategy engine, free** — pivots, zones, breakouts, entry/stop/target
-   plans, universe scanner, and a **published track record** (walk-forward
-   backtest: 53.1% win rate, +0.58R net expectancy over 194 setups — see
-   `HACKATHON.md` and reproduce with `cd backend && python -m scripts.backtest`).
-   The analysis others charge for, with the accountability nobody offers.
-3. **Catalyst-aware news** — a 2-source CONFIRMED gate, per-symbol news wired
-   into the chart, so you see *why* a stock is running, not just that it is.
-
-Technical + portfolio + sentiment analysis. One screen. Free. Accountable.
-
-## Our answer
-
-| Principle | How SwingLens enforces it |
-|---|---|
-| **Numbers come from data or math, never from the AI** | The engine computes pivots, zones, breakouts, entry/stop/target and confidence in deterministic Python. The hosted LLM only *narrates* the computed facts, or the app falls back to templates. |
-| **Every payload carries a `source` block** | Provider, link, timestamp — shown in the UI next to every chart, headline, and plan. |
-| **Accountability by default** | Every Analyze plan is saved and self-graded against what price actually did (pessimistic same-candle rule). Win rate is public on the Pulse page. |
-| **Local-first, privacy-first** | Your portfolio, watchlist and chats live in a local SQLite file. Nothing leaves your machine unless you deploy it. |
-| **Every external system sits behind an adapter** | LLM, market data, (later) brokers — so local mode and SaaS mode are the same code. |
-
-## What's built (working today)
-
-- **Analyst Engine** — pivot detection, S/R zones, trendlines, breakout
-  marking, entry/stop/target plans, explainable confidence scoring.
-- **Pro charting** — 10 chart types (Heikin Ashi, Hollow candles, Bars,
-  Baseline, Area, Step…) + **27 configurable indicators** across
-  Trend / Momentum / Volatility / Volume / Levels with plain-language
-  "how to read" notes. Settings persist across sessions.
-- **Newsroom** — real RSS headlines with a 2-source CONFIRMED gate, Pulse
-  dashboard with drifting headline sky, per-symbol news, typo-tolerant search.
-- **Portfolio Mirror** — tolerant broker-file import (CSV/XLSX, header
-  sniffing, tradebook vs holdings auto-detect), live-priced holdings, FIFO
-  realized P&L, Trader Mirror personality with explainable traits.
-- **Alive layer** — per-user watchlist, price alerts (checked every 5 min),
-  position-size calculator, **Engine Track Record** (self-grading, public).
-- **Scanner + AI chat** — engine scans whole universes and ranks setups
-  (the LLM never picks stocks); persistent, context-grounded conversations.
-
-## The scalability path (local → product)
-
-```
-Today (hackathon)                Next                              SaaS
-───────────────────────────────  ────────────────────────────────  ──────────────────────────────
-SQLite, single machine           PostgreSQL, Docker (DONE)         Multi-tenant hosted product
-yfinance adapter                 NSE/broker API adapters           Real-time websockets, paid data
-Hosted LLM adapters (Gemini/Groq/xAI)                              Fine-tuned narration models
-Single-user auth works           Multi-user from day one (DONE)    Teams, shared workspaces
-Engine track record per user     Public leaderboards               Verified strategy marketplace
+```powershell
+python -m venv backend/venv
+backend/venv/Scripts/python -m pip install -r requirements-dev.txt
+Copy-Item backend/.env.example backend/.env
+npm ci --prefix frontend
 ```
 
-Everything the SaaS phase needs is already behind an adapter — scaling is
-deployment work, not rewrites. See `DEPLOY.md` for the one-command Docker run
-and free hosting path (Render / HF Spaces).
+Set a random `SECRET_KEY` and your own `GEMINI_API_KEY` and/or `GROQ_API_KEY`
+in `backend/.env`. Existing plural `GEMINI_API_KEYS` / `GROQ_API_KEYS` settings
+remain supported. Do not overwrite an existing `.env` when upgrading.
 
----
+Run the API and frontend in separate terminals:
 
-## Team Hive — who owns what
-
-We split the project by **layer** so both of us can work independently
-without merge conflicts. The contract between the two halves is the
-REST API (`/api/*`) — if the API shape changes, we talk first.
-
-| Member | Role | Role file |
-|---|---|---|
-| **Hanamaraddi** | Backend & Analysis Engine | [README_HANAMARADDI.md](README_HANAMARADDI.md) |
-| **Lochan** | Frontend & Product Experience | [README_LOCHAN.md](README_LOCHAN.md) |
-
-**Shared ground rules**
-1. Numbers come from data or math, never from the AI.
-2. Every payload carries a `source` block.
-3. Every external system sits behind an adapter.
-4. Work on feature branches: `feat/backend-...` and `feat/frontend-...`.
-   Merge to `main` via PR so the other person can eyeball it.
-5. Backend changes must keep `pytest -q` green. Frontend changes must keep
-   `npm run build` green.
-
----
-
-## Prerequisites (install once)
-
-| Tool | Where | Notes |
-|---|---|---|
-| Python 3.11+ | python.org | Tick **"Add Python to PATH"** in the installer |
-| Node.js 20 LTS | nodejs.org | Includes npm |
-| Gemini / Groq / xAI API key | provider console | Optional — narration falls back to templates without it |
-
-See [DEPLOY.md](DEPLOY.md) for provider key setup and public deployment.
-
-## Run it
-
-**Easy mode (Windows):** double-click `run-backend.bat`, then
-`run-frontend.bat`. Done.
-
-**Manual mode:**
-
-```
-# Terminal 1 — Backend
-cd backend
-python -m venv venv            # first time only
-venv\Scripts\activate          # first time only
-pip install -r requirements.txt  # first time only
-copy .env.example .env         # first time only
-venv\Scripts\python -m uvicorn app.main:app --reload --port 8000
-
-# Terminal 2 — Frontend
-cd frontend
-npm install                    # first time only
-npm run dev
+```powershell
+backend/venv/Scripts/python -m uvicorn app.main:app --app-dir backend --port 8000
+npm run dev --prefix frontend
 ```
 
-Open **http://localhost:5173**, create an account, and search any stock.
+Open http://localhost:5173, create an account, choose a stock, run Analyze, and
+ask the chatbot to explain the setup. “Scan the market” and “Analyse this stock”
+use the deterministic engine and work without an AI key. General conversation
+requires a provider with working quota. No Ollama or local model server is needed.
 
-Run the engine tests any time: `cd backend && venv\Scripts\python -m pytest -q`.
+## Hosted AI
 
-## Project layout
+- Gemini: create a key at https://aistudio.google.com/apikey.
+- Groq: create a key at https://console.groq.com/keys.
+- `LLM_PROVIDER=gemini,groq` selects the provider order; only configured providers run.
+- Model IDs are configurable through `GEMINI_MODEL` / `GROQ_MODEL`.
+- Keys stay in backend environment variables; never use a `VITE_` prefix for secrets.
+- Free-tier availability and quotas depend on the provider, model and account.
+  Authentication alone does not prove that a model has generation quota.
+- Failover makes one request per configured provider; quota failures cool down the
+  provider instead of cycling keys to bypass its allowance. Cooldowns are per process.
+- The chatbot checks numeric claims against supplied context and removes unsupported
+  sentences. This is a numeric consistency check, not proof of correctness or a guarantee
+  against every hallucination. Chart narration falls back to deterministic templates.
 
+## Deployment
+
+The repository includes `vercel.json`, a Python API entry point and a Vite build.
+Use the repository root as the Vercel project root. Connect a persistent PostgreSQL
+database (for example the Neon free plan). SQLite is for local use only.
+See [DEPLOY.md](DEPLOY.md) for environment variables and verification steps.
+
+The existing GitHub repository is https://github.com/hanamaraddi9620adi/swinglens.
+The local checkout may use `upstream` for that repository; verify the destination
+with `git remote -v` before pushing. Do not push SwingLens updates to another fork.
+
+## Verification
+
+```powershell
+backend/venv/Scripts/python -m pytest -q
+npm run build --prefix frontend
+npm audit --prefix frontend --omit=dev --audit-level=high
 ```
-swinglens/
-├── backend/                 FastAPI + SQLite          ← Hanamaraddi's zone
-│   └── app/
-│       ├── main.py          App entry, CORS, routers
-│       ├── config.py        All settings from .env
-│       ├── auth.py          PBKDF2 passwords + JWT sessions
-│       ├── routers/         /api/auth, /api/stocks, /api/analysis, ...
-│       └── services/        analysis_engine, indicators, markets, news,
-│                            portfolio, scanner, narration, llm/
-├── frontend/                React + Vite + Tailwind v4 ← Lochan's zone
-│   └── src/
-│       ├── pages/           Login, Workspace, Pulse, Explore, Portfolio
-│       └── components/      CandleChart, AIChat, IndicatorDialog, ...
-├── sample_data/             Demo broker files for import testing
-├── DEPLOY.md                Docker + free hosting guide
-└── run-backend.bat / run-frontend.bat   one-click launchers
-```
 
-## Troubleshooting
+Tests use a temporary database. Coverage includes deterministic analytics,
+provider failover, malformed provider replies, chat history and ownership,
+numeric grounding, input validation, session handling and portfolio flows.
 
-**"destroy is not a function" crash** — fixed: a `useEffect` in Workspace was
-returning a Promise as its cleanup. Effects must return a function or nothing.
+## Operational limits
 
-**PowerShell refuses to activate the venv** — use `run-backend.bat` instead,
-or run once: `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
+Yahoo Finance and RSS feeds are third-party services and can return delayed,
+missing or rate-limited data. The curated market scanner can be slow on cold
+requests; Vercel function durations and free-tier quotas still apply. Public chat
+has a database-backed per-account rate limit. Before high-volume operation, add
+edge abuse controls for registration/login and expensive analytics, email
+verification/reset, monitoring, backups and reviewed schema migrations. Existing
+legacy schemas are preserved and require migration rather than automatic deletion.
+The test suite is evidence for covered behavior; it does not establish a bug-free app.
 
-**AI panel shows that cloud AI is unavailable** — check `LLM_PROVIDER`,
-`GEMINI_API_KEYS`, and `GROQ_API_KEYS` in the backend environment. Without a key,
-narration uses deterministic templates — Analyze still works.
+## Development handoff
 
-**A stock shows "No data found"** — Indian stocks need the exchange suffix:
-`RELIANCE.NS` (NSE) or `RELIANCE.BO` (BSE).
-
-**15m / 1H ranges greyed out** — data-provider limit (Yahoo keeps ~60 days of
-15-minute bars). Daily and weekly go back decades.
-
-**Port already in use** — change `--port 8000` (backend) or `port: 5173` in
-`frontend/vite.config.js` (and the proxy target in the same file).
-
-## Roadmap
-
-- **Phase 2 — Analyst Engine**: DONE
-- **Phase 2.5 — Pro toolbox** (chart types + 27 indicators): DONE
-- **Phase 3 — Newsroom**: DONE
-- **Phase 4 — Mirror (portfolio)**: DONE
-- **Phase 4.75 — Alive** (watchlist, alerts, track record): DONE
-- **Phase 5 — SaaS**: PostgreSQL, broker API adapters, real-time feeds,
-  public track-record leaderboards, hosted launch.
+Continue work in this existing repository, keeping market facts deterministic,
+provider secrets server-side, and source information visible. Preserve account
+and conversation ownership, use persistent PostgreSQL in hosted environments,
+and report third-party failures honestly. Review the remaining operational limits
+before adding features, and update deployment instructions when configuration
+changes. Finish with backend regression tests, a production frontend build and
+whole-file rewrites as required by `skills/swinglens-dev/SKILL.md`.
