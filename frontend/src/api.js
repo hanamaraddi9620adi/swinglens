@@ -41,6 +41,8 @@ export const api = {
   runScan: (segment, top = 5) => request(`/api/scan?segment=${enc(segment)}&top=${top}`),
   importPortfolio: (file, broker) => { const body = new FormData(); body.append('file', file); body.append('broker', broker); return request('/api/portfolio/import', { method: 'POST', body }) },
   portfolioSummary: () => request('/api/portfolio/summary'), portfolioBehavior: () => request('/api/portfolio/behavior'), clearPortfolio: () => request('/api/portfolio', { method: 'DELETE' }),
+  portfolioReport: (refresh = false) => request(`/api/portfolio/report?refresh_quotes=${refresh}`, { timeout: 65000 }),
+  portfolioReview: () => request('/api/portfolio/review', { method: 'POST', timeout: 115000 }),
   watchlist: () => request('/api/watchlist'),
   toggleWatch: (symbol, name) => request(`/api/watchlist/${enc(symbol)}?name=${enc(name || '')}`, { method: 'POST' }),
   alerts: () => request('/api/alerts'),
