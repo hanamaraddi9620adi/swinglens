@@ -1,31 +1,27 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api'
+import { useDialog } from '../hooks/useDialog'
 
 function Rich({ text = '' }) {
-  return text.split('\n').map((line, i) => <p key={i} className="my-1 whitespace-pre-wrap">{
-    line.split(/(\*\*[^*]+\*\*)/g).map((part, j) => part.startsWith('**')
-      ? <strong key={j}>{part.slice(2, -2)}</strong> : part)
-  }</p>)
+  return text.split('\n').map((line, index) => <p key={index} className="my-1 whitespace-pre-wrap break-words">{line.split(/(\*\*[^*]+\*\*)/g).map((part, key) => part.startsWith('**') ? <strong key={key}>{part.slice(2, -2)}</strong> : part)}</p>)
 }
-
 function ScanCard({ scan, onAnalyze, onOpenSymbol }) {
-  return <div className="bg-ink-800 border border-ink-600 rounded-lg p-3 space-y-2">
+  return <article className="bg-ink-800 border border-ink-600 rounded-lg p-3 space-y-2">
     <p className="text-sm font-semibold">Engine scan · {scan.universe}</p>
-    <p className="text-xs text-mist-400">{scan.scanned} stocks scanned; {scan.failed || 0} unavailable.</p>
+    <p className="text-xs text-mist-400">{scan.scanned} instruments scanned; {scan.failed || 0} unavailable.</p>
     {!scan.actionable?.length && <p className="text-xs">No qualifying setups right now.</p>}
     {['actionable', 'watchlist'].map(kind => <div key={kind}>
       {!!scan[kind]?.length && <p className="text-xs text-brass-400 capitalize my-2">{kind}</p>}
-      {scan[kind]?.map(r => <div key={r.symbol} className="flex items-center gap-2 py-2 text-xs border-b border-ink-700">
-        <span className="flex-1">{r.name || r.symbol}<span className="block text-mist-400">{r.symbol} · {r.state?.replaceAll('_', ' ')}</span></span>
-        <span className="price">{kind === 'actionable' ? `Confidence ${r.confidence}` : `RSI ${r.rsi ?? '—'}`}</span>
-        <button type="button" onClick={() => kind === 'actionable' ? onAnalyze?.(r.symbol) : onOpenSymbol?.(r.symbol)} className="text-brass-400">{kind === 'actionable' ? 'Analyze' : 'Open'}</button>
+      {scan[kind]?.map(row => <div key={row.symbol} className="flex flex-wrap items-center gap-2 py-2 text-xs border-b border-ink-700">
+        <span className="flex-1 min-w-24">{row.name || row.symbol}<span className="block text-mist-400">{row.symbol} · {row.state?.replaceAll('_', ' ')}</span></span>
+        <span className="price">{kind === 'actionable' ? `Confidence ${row.confidence}` : `RSI ${row.rsi ?? '—'}`}</span>
+        <button type="button" className="quiet-button" onClick={() => kind === 'actionable' ? onAnalyze?.(row.symbol) : onOpenSymbol?.(row.symbol)}>{kind === 'actionable' ? 'Analyze' : 'Open'}</button>
       </div>)}
     </div>)}
     {scan.source?.url && <a className="text-xs text-brass-400" href={scan.source.url} target="_blank" rel="noreferrer">{scan.source.provider || 'Data source'}</a>}
     <p className="text-xs text-mist-400">{scan.source?.note}</p>
-  </div>
+  </article>
 }
-
 const suggestions = ['Scan the market for bullish setups', 'Analyse this stock', 'Explain the risks in this setup', 'Teach me the buy-the-dip strategy']
 
 export default function AIChat({ onAnalyze, onOpenSymbol, context }) {
@@ -40,33 +36,21 @@ export default function AIChat({ onAnalyze, onOpenSymbol, context }) {
   const [lastScan, setLastScan] = useState(null)
   const [notice, setNotice] = useState('')
   const [copied, setCopied] = useState(null)
-  const endRef = useRef(null)
-  const busyRef = useRef(false)
-  const generation = useRef(0)
-  const mounted = useRef(true)
-
-  const refreshStatus = () => api.aiStatus().then(s => { if (mounted.current) setStatus(s) }).catch(() => { if (mounted.current) setStatus({ online: false, detail: 'Could not check cloud AI. You can still try sending a message.' }) })
-  const refreshHistory = () => api.aiConversations().then(c => { if (mounted.current) setConvs(c) }).catch(() => {})
+  const busyRef = useRef(false), generation = useRef(0), mounted = useRef(true), list = useRef(null)
+  const dialog = useDialog(full, () => setFull(false))
+  const refreshStatus = () => api.aiStatus().then(value => { if (mounted.current) setStatus(value) }).catch(() => { if (mounted.current) setStatus({ online: false, detail: 'Cloud AI status unavailable. You can still try a message or an analysis command.' }) })
+  const refreshHistory = () => api.aiConversations().then(value => { if (mounted.current) setConvs(value) }).catch(() => {})
   useEffect(() => {
-    mounted.current = true
-    refreshStatus(); refreshHistory()
+    mounted.current = true; refreshStatus(); refreshHistory()
     const timer = setInterval(refreshStatus, 60000)
     return () => { mounted.current = false; generation.current++; clearInterval(timer) }
   }, [])
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }) }, [messages, busy])
-  useEffect(() => {
-    if (!full) return
-    const previous = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    const escape = e => { if (e.key === 'Escape') setFull(false) }
-    window.addEventListener('keydown', escape)
-    return () => { document.body.style.overflow = previous; window.removeEventListener('keydown', escape) }
-  }, [full])
-
+  // Scroll the message pane only. scrollIntoView moved the entire page to chat
+  // when opening a mobile chart, hiding the stock header and chart controls.
+  useEffect(() => { if (list.current) list.current.scrollTop = list.current.scrollHeight }, [messages, busy])
   const newChat = () => {
     if (busyRef.current) return
-    generation.current++
-    setConvId(null); setMessages([]); setLastScan(null); setNotice(''); setShowHistory(false)
+    generation.current++; setConvId(null); setMessages([]); setLastScan(null); setNotice(''); setShowHistory(false)
   }
   const openConversation = async id => {
     if (busyRef.current) return
@@ -75,101 +59,70 @@ export default function AIChat({ onAnalyze, onOpenSymbol, context }) {
     try {
       const rows = await api.aiMessages(id)
       if (version !== generation.current || !mounted.current) return
-      const parsed = rows.map(m => {
-        if (m.role === 'scan') {
-          try { return { role: 'scan', scan: JSON.parse(m.content) } } catch { return { role: 'error', text: 'This saved scan could not be loaded.' } }
-        }
-        return { role: m.role, text: m.content }
+      const parsed = rows.map(row => {
+        if (row.role === 'scan') { try { return { role: 'scan', scan: JSON.parse(row.content) } } catch { return { role: 'error', text: 'This saved scan could not be loaded.' } } }
+        return { role: row.role, text: row.content }
       })
-      setConvId(id); setMessages(parsed); setLastScan(parsed.findLast(m => m.scan)?.scan || null); setShowHistory(false)
+      setConvId(id); setMessages(parsed); setLastScan([...parsed].reverse().find(row => row.scan)?.scan || null); setShowHistory(false)
     } catch (err) { if (version === generation.current) setNotice(err.message) }
   }
   const removeConversation = async id => {
     if (busyRef.current) return
-    try {
-      await api.aiDeleteConversation(id)
-      setConvs(c => c.filter(x => x.id !== id))
-      if (id === convId) newChat()
-    } catch (err) { setNotice(err.message) }
+    try { await api.aiDeleteConversation(id); setConvs(rows => rows.filter(row => row.id !== id)); if (id === convId) newChat() }
+    catch (err) { setNotice(err.message) }
   }
   const send = async value => {
     const text = value.trim()
     if (!text || busyRef.current || text.length > 4000) return
     busyRef.current = true
     const version = ++generation.current
-    setInput(''); setBusy(true); setNotice('')
-    setMessages(m => [...m, { role: 'user', text }])
+    setInput(''); setBusy(true); setNotice(''); setMessages(rows => [...rows, { role: 'user', text }])
     try {
       const ctx = { ...context, last_scan: lastScan ? { universe: lastScan.universe, as_of: lastScan.as_of, actionable: lastScan.actionable, watchlist: lastScan.watchlist } : null }
-      const res = await api.aiChat(text, ctx, convId)
+      const result = await api.aiChat(text, ctx, convId)
       if (!mounted.current || version !== generation.current) return
-      setConvId(res.conversation_id)
-      setMessages(m => [...m, { role: 'ai', text: res.reply, provider: res.provider, source: res.source }])
-      if (res.action?.type === 'analyze') await onAnalyze?.(res.action.symbol)
-      if (res.action?.type === 'scan') {
-        const scan = await api.runScan(res.action.segment)
+      setConvId(result.conversation_id); setMessages(rows => [...rows, { role: 'ai', text: result.reply, provider: result.provider, source: result.source }])
+      if (result.action?.type === 'analyze') await onAnalyze?.(result.action.symbol)
+      if (result.action?.type === 'scan') {
+        const scan = await api.runScan(result.action.segment)
         if (!mounted.current || version !== generation.current) return
-        setLastScan(scan); setMessages(m => [...m, { role: 'scan', scan }])
+        setLastScan(scan); setMessages(rows => [...rows, { role: 'scan', scan }])
       }
     } catch (err) {
       if (mounted.current && version === generation.current) {
         if (err.detail?.conversation_id) setConvId(err.detail.conversation_id)
-        setMessages(m => [...m, { role: 'error', text: err.message }])
-        setInput(text)
+        setMessages(rows => [...rows, { role: 'error', text: err.message }]); setInput(text)
       }
-    } finally {
-      busyRef.current = false
-      if (mounted.current) { setBusy(false); refreshStatus(); refreshHistory() }
-    }
+    } finally { busyRef.current = false; if (mounted.current) { setBusy(false); refreshStatus(); refreshHistory() } }
   }
-  const copy = async (text, i) => {
-    try { await navigator.clipboard.writeText(text); setCopied(i) } catch { setNotice('Clipboard access is unavailable in this browser.') }
-  }
-
-  return <aside aria-label="SwingLens AI chat" className={full ? 'fixed inset-0 z-50 bg-ink-950 flex flex-col' : 'flex flex-col bg-ink-900 border border-ink-700 rounded-xl overflow-hidden min-h-[420px] max-h-[560px]'}>
-    <header className="flex items-center gap-2 p-3 border-b border-ink-700">
+  const copy = async (text, index) => { try { await navigator.clipboard.writeText(text); setCopied(index) } catch { setNotice('Clipboard access is unavailable in this browser.') } }
+  return <aside ref={dialog} aria-label={full ? 'Expanded AI chat' : 'SwingLens AI chat'} role={full ? 'dialog' : undefined} aria-modal={full || undefined}
+    className={full ? 'fixed inset-0 z-[95] h-dvh bg-ink-950 flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]' : 'flex flex-col bg-ink-900 border border-ink-700 rounded-xl overflow-hidden h-[520px] max-h-[85svh] min-w-0'}>
+    <header className="flex flex-wrap items-center gap-2 p-3 border-b border-ink-700 shrink-0">
       <span className={`w-2 h-2 rounded-full ${status?.online ? 'bg-bull-500' : 'bg-brass-400'}`} />
-      <h3 className="text-sm font-semibold">SwingLens AI</h3>
-      <span className="text-xs text-brass-400 truncate">{context?.symbol}</span>
-      <div className="ml-auto flex gap-2 text-xs">
-        <button type="button" disabled={busy} onClick={() => { setShowHistory(v => !v); refreshHistory() }}>History</button>
-        <button type="button" disabled={busy} onClick={newChat}>New</button>
-        <button type="button" aria-label={full ? 'Exit fullscreen' : 'Fullscreen chat'} onClick={() => setFull(v => !v)}>{full ? 'Close' : 'Expand'}</button>
+      <h3 className="text-sm font-semibold">SwingLens AI</h3><span className="text-xs text-brass-400 truncate max-w-32">{context?.symbol}</span>
+      <div className="ml-auto flex gap-1">
+        <button type="button" className="quiet-button" disabled={busy} onClick={() => { setShowHistory(value => !value); refreshHistory() }}>History</button>
+        <button type="button" className="quiet-button" disabled={busy} onClick={newChat}>New</button>
+        <button type="button" className="quiet-button" aria-label={full ? 'Exit fullscreen chat' : 'Fullscreen chat'} onClick={() => setFull(value => !value)}>{full ? 'Close' : 'Expand'}</button>
       </div>
     </header>
-    {showHistory && <div className="max-h-40 overflow-y-auto p-3 border-b border-ink-700 text-xs">
+    {showHistory && <div className="max-h-40 overflow-y-auto overscroll-contain p-3 border-b border-ink-700 text-xs shrink-0">
       {!convs.length && <p>No saved conversations yet.</p>}
-      {convs.map(c => <div key={c.id} className="flex gap-2 py-2">
-        <button type="button" disabled={busy} className="flex-1 text-left truncate" onClick={() => openConversation(c.id)}>{c.title}</button>
-        <button type="button" disabled={busy} aria-label={`Delete ${c.title}`} onClick={() => removeConversation(c.id)}>Delete</button>
-      </div>)}
+      {convs.map(row => <div key={row.id} className="flex gap-2 py-1"><button type="button" disabled={busy} className="flex-1 text-left truncate py-2" onClick={() => openConversation(row.id)}>{row.title}</button><button type="button" className="quiet-button" disabled={busy} aria-label={`Delete ${row.title}`} onClick={() => removeConversation(row.id)}>Delete</button></div>)}
     </div>}
-    <div className={`flex-1 overflow-y-auto p-4 space-y-3 ${full ? 'max-w-3xl w-full mx-auto' : ''}`}>
+    <div ref={list} className={`flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-3 ${full ? 'max-w-3xl w-full mx-auto' : ''}`}>
       {notice && <p role="alert" className="text-xs text-bear-500">{notice}</p>}
-      {status && !status.online && <div className="text-xs text-mist-400 bg-ink-800 p-3 rounded-lg">
-        <p>{status.detail}</p><button type="button" className="text-brass-400 mt-2" onClick={refreshStatus}>Check again</button>
-      </div>}
-      {!messages.length && <div className="space-y-2">
-        <p className="text-xs text-mist-400">Ask about your chart, explore a strategy, or run a market scan. Analysis commands work even when cloud AI is unavailable.</p>
-        {suggestions.map(s => <button type="button" key={s} disabled={busy} onClick={() => send(s)} className="block text-left text-xs bg-ink-800 rounded-lg p-2 w-full hover:bg-ink-700">{s}</button>)}
-      </div>}
-      <div aria-live="polite" aria-relevant="additions" className="space-y-3">
-        {messages.map((m, i) => m.role === 'scan' ? <ScanCard key={i} scan={m.scan} onAnalyze={onAnalyze} onOpenSymbol={onOpenSymbol} /> :
-          <div key={i} className={`text-sm rounded-lg p-3 ${m.role === 'user' ? 'bg-ink-700 ml-6' : m.role === 'error' ? 'bg-bear-500/10 text-bear-500' : 'bg-ink-800'}`}>
-            <Rich text={m.text} />
-            {m.role === 'ai' && <div className="flex gap-3 text-[10px] text-mist-400 mt-2">
-              <span>{m.provider || 'Saved reply'}</span>
-              {m.source?.url && <a href={m.source.url} target="_blank" rel="noreferrer">Source</a>}
-              <button type="button" onClick={() => copy(m.text, i)}>{copied === i ? 'Copied' : 'Copy'}</button>
-            </div>}
-          </div>)}
-      </div>
+      {status && !status.online && <div className="text-xs text-mist-400 bg-ink-800 p-3 rounded-lg"><p>{status.detail}</p><button type="button" className="text-brass-400 mt-2 py-2" onClick={refreshStatus}>Check again</button></div>}
+      {!messages.length && <div className="space-y-2"><p className="text-xs text-mist-400">Ask about your chart or explore a strategy. Analysis and scan commands also work when cloud AI is unavailable.</p>{suggestions.map(value => <button type="button" key={value} disabled={busy} onClick={() => send(value)} className="block text-left text-xs bg-ink-800 rounded-lg p-3 min-h-11 w-full hover:bg-ink-700">{value}</button>)}</div>}
+      <div aria-live="polite" aria-relevant="additions" className="space-y-3">{messages.map((message, index) => message.role === 'scan' ? <ScanCard key={index} scan={message.scan} onAnalyze={onAnalyze} onOpenSymbol={onOpenSymbol} /> : <div key={index} className={`text-sm rounded-lg p-3 ${message.role === 'user' ? 'bg-ink-700 ml-6' : message.role === 'error' ? 'bg-bear-500/10 text-bear-500' : 'bg-ink-800'}`}>
+        <Rich text={message.text} />{message.role === 'ai' && <div className="flex flex-wrap items-center gap-3 text-[10px] text-mist-400 mt-2"><span>{message.provider || 'Saved reply'}</span>{message.source?.url && <a href={message.source.url} target="_blank" rel="noreferrer">Source</a>}<button type="button" className="py-2" onClick={() => copy(message.text, index)}>{copied === index ? 'Copied' : 'Copy'}</button></div>}
+      </div>)}</div>
       {busy && <p role="status" className="text-xs text-mist-400">Working on your request…</p>}
-      <div ref={endRef} />
     </div>
-    <form onSubmit={e => { e.preventDefault(); send(input) }} className={`flex gap-2 p-3 border-t border-ink-700 ${full ? 'max-w-3xl w-full mx-auto' : ''}`}>
-      <input aria-label="Chat message" value={input} maxLength={4000} onChange={e => setInput(e.target.value)} disabled={busy} placeholder="Ask about your chart or scan the market…" className="min-w-0 flex-1 bg-ink-800 border border-ink-600 rounded-lg px-3 py-2 text-sm" />
-      <button disabled={busy || !input.trim()} className="bg-brass-400 text-ink-950 rounded-lg px-4 disabled:opacity-40">Send</button>
+    <form onSubmit={event => { event.preventDefault(); send(input) }} className={`flex gap-2 p-3 border-t border-ink-700 shrink-0 ${full ? 'max-w-3xl w-full mx-auto' : ''}`}>
+      <input aria-label="Chat message" value={input} maxLength={4000} onChange={event => setInput(event.target.value)} disabled={busy} placeholder="Ask about this chart…" className="min-w-0 flex-1 bg-ink-800 border border-ink-600 rounded-lg px-3 py-2 text-sm" />
+      <button disabled={busy || !input.trim()} className="action-button">Send</button>
     </form>
   </aside>
 }

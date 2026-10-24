@@ -13,6 +13,9 @@ skills-lock.json
 backend/venv
 frontend/node_modules
 frontend/dist
+frontend/tests
+frontend/test-results
+frontend/playwright-report
 backend/tests
 backend/scripts
 backend/backtest_results.json

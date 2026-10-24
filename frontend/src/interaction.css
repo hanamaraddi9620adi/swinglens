@@ -1,0 +1,11 @@
+/* Keep application overlays above the chart library's positioned canvases. */
+.chart-loading { z-index: 8; }
+.chart-overlay { z-index: 4; }
+/* Grid children must shrink before dense numeric content expands the page. */
+.grid > * { min-width: 0; }
+.grid .price { overflow-wrap: anywhere; }
+/* Keyboard/touch targets remain usable in compact research and data panels. */
+@media (pointer: coarse) {
+  button:not(.segmented-control button) { min-height: 44px; }
+  a:focus-visible { outline-offset: 2px; }
+}

@@ -1,183 +1,81 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../auth'
+import { api } from '../api'
 import AIChat from '../components/AIChat'
 import CandleChart from '../components/CandleChart'
 import StockSearch from '../components/StockSearch'
 import TickerStrip from '../components/TickerStrip'
 import WatchStrip from '../components/WatchStrip'
 import AlertBell from '../components/AlertBell'
-import { api } from '../api'
+import CommandPalette from '../components/CommandPalette'
+import SymbolNews from '../components/SymbolNews'
+import ChartBrowser from './ChartBrowser'
 import Explore from './Explore'
 import Pulse from './Pulse'
 import Portfolio from './Portfolio'
 import Research from './Research'
 import Discovery from './Discovery'
 import ThesisMonitor from './Thesis'
-import CommandPalette from '../components/CommandPalette'
-import SymbolNews from '../components/SymbolNews'
 
-const QUICK_PICKS = ['RELIANCE.NS', 'TATAMOTORS.NS', 'SUZLON.NS', 'AAPL', 'NVDA']
-
+const tabs = [['pulse', 'Pulse'], ['explore', 'Explore'], ['chart', 'Chart'], ['research', 'Research'], ['discover', 'Discover'], ['thesis', 'Thesis'], ['portfolio', 'Portfolio']]
 export default function Workspace() {
   const { user, logout } = useAuth()
-  const [view, setView] = useState('pulse')
-  const [symbol, setSymbol] = useState('RELIANCE.NS')
-  const [analyzeReq, setAnalyzeReq] = useState(0)
-  const [latestAnalysis, setLatestAnalysis] = useState(null)
-  const [newsTitles, setNewsTitles] = useState([])
-  const [portfolioCtx, setPortfolioCtx] = useState(null)
-  const [watchlist, setWatchlist] = useState([])
-  const [paletteOpen, setPaletteOpen] = useState(false)
-
-  const loadWatchlist = () => api.watchlist().then((d) => setWatchlist(d.items || [])).catch(() => {})
-  // Wrap in a body so the effect returns undefined, not the Promise from
-  // loadWatchlist - React would try to call that Promise as the cleanup
-  // function on unmount ("destroy is not a function").
-  useEffect(() => { loadWatchlist() }, [])
-
-  const toggleWatch = async (sym) => {
-    try { await api.toggleWatch(sym, sym); loadWatchlist() } catch { /* offline */ }
-  }
-
-  // "/" focuses search, Ctrl/Cmd+K opens the command palette
+  const [view, setView] = useState('pulse'), [symbol, setSymbol] = useState(null)
+  const [analyzeReq, setAnalyzeReq] = useState(0), [latestAnalysis, setLatestAnalysis] = useState(null)
+  const [newsTitles, setNewsTitles] = useState([]), [portfolioCtx, setPortfolioCtx] = useState(null)
+  const [watchlist, setWatchlist] = useState([]), [paletteOpen, setPaletteOpen] = useState(false), [notice, setNotice] = useState('')
+  const loadWatchlist = useCallback(() => api.watchlist().then(data => setWatchlist(data.items || [])).catch(() => {}), [])
+  useEffect(() => { loadWatchlist() }, [loadWatchlist])
+  useEffect(() => { setLatestAnalysis(null); setNewsTitles([]) }, [symbol])
+  useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }) }, [view, symbol])
+  const toggleWatch = async value => { try { await api.toggleWatch(value, value); await loadWatchlist(); setNotice('') } catch (err) { setNotice(err.message) } }
+  const navigate = useCallback(value => {
+    if (value === 'chart') { setSymbol(null); setLatestAnalysis(null); setNewsTitles([]); setAnalyzeReq(0) }
+    setView(value); setPaletteOpen(false)
+  }, [])
+  const openSymbol = useCallback(value => { setSymbol(value); setView('chart'); setAnalyzeReq(0); setPaletteOpen(false) }, [])
+  const researchSymbol = useCallback(value => { setSymbol(value); setView('research'); setPaletteOpen(false) }, [])
+  const requestAnalyze = useCallback(value => { setSymbol(value); setView('chart'); setAnalyzeReq(n => n + 1) }, [])
   useEffect(() => {
-    const onKey = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault()
-        setPaletteOpen((o) => !o)
-        return
-      }
-      if (e.key === '/' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
-        e.preventDefault()
-        document.querySelector('#global-search input')?.focus()
-      }
+    const onKey = event => {
+      const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName) || event.target.isContentEditable
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); setPaletteOpen(value => !value) }
+      else if (event.key === '/' && !typing) { event.preventDefault(); document.querySelector('#global-search input')?.focus() }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
-
-  // What the AI is allowed to see and cite - nothing more.
-  const chatContext = useMemo(() => ({
-    symbol,
-    analysis: latestAnalysis ? {
-      setup: latestAnalysis.setup,
-      indicators: latestAnalysis.indicators,
-      narration: latestAnalysis.narration,
-    } : null,
-    news_titles: newsTitles.slice(0, 10).map((n) => ({
-      title: n.title, source: n.source_name, confirmed: n.confirmed,
-    })),
-    portfolio: portfolioCtx,
+  const chatContext = useMemo(() => ({ symbol,
+    analysis: latestAnalysis?.symbol === symbol ? { setup: latestAnalysis.setup, indicators: latestAnalysis.indicators, narration: latestAnalysis.narration } : null,
+    news_titles: newsTitles.slice(0, 10).map(row => ({ title: row.title, source: row.source_name, confirmed: row.confirmed })), portfolio: portfolioCtx,
   }), [symbol, latestAnalysis, newsTitles, portfolioCtx])
-
-  const openSymbol = (sym) => {
-    setSymbol(sym)
-    setView('chart')
-  }
-
-  // Chat-resolved "analyse <stock>": switch chart + fire the pipeline.
-  const requestAnalyze = (sym) => {
-    setSymbol(sym)
-    setView('chart')
-    setAnalyzeReq((n) => n + 1)
-  }
-
-  const tab = (id, label) => (
-    <button
-      onClick={() => setView(id)}
-      className={`text-sm px-3 py-1.5 rounded-lg transition-colors ${
-        view === id ? 'text-brass-400 bg-brass-400/10' : 'text-mist-400 hover:text-mist-50'
-      }`}
-    >
-      {label}
-    </button>
-  )
-
-  return (
-    <div className="min-h-full flex flex-col">
-      <header className="sticky top-0 z-20 bg-ink-950/85 backdrop-blur border-b border-ink-700">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-3 flex items-center gap-4">
-          <div className="flex items-center gap-2.5 shrink-0">
-            <span className="w-8 h-8 rounded-lg bg-brass-400 grid place-items-center font-[family-name:var(--font-display)] font-bold text-ink-950">S</span>
-            <span className="font-[family-name:var(--font-display)] text-mist-50 font-semibold tracking-tight hidden sm:block">SwingLens</span>
+  return <div className="min-h-screen flex flex-col">
+    <a href="#workspace-content" className="skip-link">Skip to content</a>
+    <header className="app-header"><div className="header-inner">
+      <div className="header-top">
+        <button type="button" onClick={() => navigate('pulse')} className="brand" aria-label="SwingLens home"><span className="brand-mark">S</span><span>SwingLens</span></button>
+        <div id="global-search" className="header-search"><StockSearch onSelect={openSymbol} /></div>
+        <div className="header-actions"><span className="header-username text-xs text-mist-400 truncate max-w-28">{user?.username}</span>
+          <button type="button" className="icon-button" aria-label="Open commands" title="Commands (Ctrl+K)" onClick={() => setPaletteOpen(true)}>⌘</button>
+          <AlertBell onOpenSymbol={openSymbol} /><button type="button" onClick={logout} className="quiet-button">Sign out</button></div>
+      </div>
+      <nav className="workspace-tabs" aria-label="Workspace navigation">{tabs.map(([id, label]) => <button type="button" key={id} aria-current={view === id ? 'page' : undefined} onClick={() => navigate(id)}>{label}</button>)}</nav>
+    </div><TickerStrip onOpenSymbol={openSymbol} /></header>
+    <main id="workspace-content" tabIndex={-1} className="app-main flex-1">
+      {notice && <p role="alert" className="text-sm text-bear-500 mb-3">{notice}</p>}
+      {view === 'pulse' ? <Pulse onOpenSymbol={openSymbol} /> : view === 'explore' ? <Explore onOpenSymbol={openSymbol} />
+        : view === 'discover' ? <Discovery onOpenSymbol={researchSymbol} /> : view === 'thesis' ? <ThesisMonitor onOpenSymbol={researchSymbol} />
+        : view === 'portfolio' ? <Portfolio onOpenSymbol={openSymbol} onPortfolio={setPortfolioCtx} />
+        : view === 'research' ? symbol ? <Research key={symbol} symbol={symbol} /> : <ChartBrowser title="Choose a stock to research" onOpenSymbol={researchSymbol} />
+        : !symbol ? <ChartBrowser onOpenSymbol={openSymbol} /> : <>
+          <div className="flex flex-wrap justify-between items-center gap-2 mb-3"><button type="button" onClick={() => navigate('chart')} className="quiet-button">← All instruments</button><button type="button" onClick={() => researchSymbol(symbol)} className="quiet-button">Research {symbol} ↗</button></div>
+          <WatchStrip items={watchlist} symbol={symbol} fallback={[]} onOpen={openSymbol} onRemove={toggleWatch} />
+          <div className="chart-layout"><CandleChart key={`chart-${symbol}`} symbol={symbol} analyzeSignal={analyzeReq} onAnalysis={setLatestAnalysis} watched={watchlist.some(item => item.symbol === symbol)} onToggleWatch={toggleWatch} />
+            <div className="chart-sidebar"><AIChat key={`chat-${symbol}`} onAnalyze={requestAnalyze} onOpenSymbol={openSymbol} context={chatContext} /><SymbolNews key={`news-${symbol}`} symbol={symbol} onLoaded={setNewsTitles} /></div>
           </div>
-
-          <nav className="flex items-center gap-1 shrink-0">
-            {tab('pulse', 'Pulse')}
-            {tab('explore', 'Explore')}
-            {tab('chart', 'Chart')}
-            {tab('research', 'Research')}
-            {tab('discover', 'Discover')}
-            {tab('thesis', 'Thesis')}
-            {tab('portfolio', 'Portfolio')}
-          </nav>
-
-          <div id="global-search" className="flex-1 flex justify-center items-center gap-2">
-            <StockSearch onSelect={openSymbol} />
-            <button onClick={() => setPaletteOpen(true)} title="Command palette (Ctrl+K)"
-                    className="hidden md:block text-[10px] text-mist-400 hover:text-mist-200 border border-ink-600 hover:border-ink-500 rounded px-2 py-1.5 transition-colors">
-              ⌘K
-            </button>
-          </div>
-
-          <div className="flex items-center gap-3 shrink-0">
-            <AlertBell onOpenSymbol={openSymbol} />
-            <span className="text-sm text-mist-400 hidden md:block">{user?.username}</span>
-            <button
-              onClick={logout}
-              className="text-xs text-mist-400 hover:text-mist-50 border border-ink-600 hover:border-ink-500 rounded-lg px-3 py-1.5 transition-colors"
-            >
-              Sign out
-            </button>
-          </div>
-        </div>
-        <TickerStrip onOpenSymbol={openSymbol} />
-      </header>
-
-      <main className="flex-1 max-w-[1400px] w-full mx-auto px-4 sm:px-6 py-5">
-        {view === 'pulse' ? (
-          <Pulse onOpenSymbol={openSymbol} />
-        ) : view === 'explore' ? (
-          <Explore onOpenSymbol={openSymbol} />
-        ) : view === 'research' ? (
-          <Research symbol={symbol} />
-        ) : view === 'thesis' ? (
-          <ThesisMonitor onOpenSymbol={(sym) => { setSymbol(sym); setView('research') }} />
-        ) : view === 'discover' ? (
-          <Discovery onOpenSymbol={(sym) => { setSymbol(sym); setView('research') }} />
-        ) : view === 'portfolio' ? (
-          <Portfolio onOpenSymbol={openSymbol} onPortfolio={setPortfolioCtx} />
-        ) : (
-          <>
-            <WatchStrip items={watchlist} symbol={symbol} fallback={QUICK_PICKS}
-                        onOpen={setSymbol} onRemove={toggleWatch} />
-
-            <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-5 items-start">
-              <CandleChart symbol={symbol} analyzeSignal={analyzeReq} onAnalysis={setLatestAnalysis}
-                           watched={watchlist.some((i) => i.symbol === symbol)}
-                           onToggleWatch={toggleWatch} />
-              <div className="flex flex-col gap-5">
-                <AIChat onAnalyze={requestAnalyze} onOpenSymbol={openSymbol} context={chatContext} />
-                <SymbolNews symbol={symbol} onLoaded={setNewsTitles} />
-              </div>
-            </div>
-          </>
-        )}
-
-        <p className="mt-6 text-[11px] text-mist-400/70 leading-relaxed max-w-3xl">
-          SwingLens is a research and education tool — not investment advice, and not a
-          SEBI-registered advisory. The engine shows what the data says with full sourcing;
-          you make the call. It never executes trades. Verify anything important at the
-          linked sources before acting.
-        </p>
-      </main>
-
-      <CommandPalette
-        open={paletteOpen}
-        onClose={() => setPaletteOpen(false)}
-        onNavigate={(v) => { setView(v); setPaletteOpen(false) }}
-        onOpenSymbol={(sym) => { setSymbol(sym); setView('research'); setPaletteOpen(false) }}
-      />
-    </div>
-  )
+        </>}
+      <p className="mt-6 text-[11px] text-mist-400/70 leading-relaxed max-w-3xl">SwingLens is a research and education tool, not a SEBI-registered advisory. Market data may be delayed. Verify important information at the linked sources before acting.</p>
+    </main>
+    <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} onNavigate={navigate} onOpenSymbol={researchSymbol} />
+  </div>
 }

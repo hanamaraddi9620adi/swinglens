@@ -4,13 +4,8 @@ import App from './App'
 import ErrorBoundary from './ErrorBoundary'
 import { AuthProvider } from './auth'
 import './index.css'
+import './interaction.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <ErrorBoundary>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    </ErrorBoundary>
-  </React.StrictMode>
+  <React.StrictMode><ErrorBoundary><AuthProvider><App /></AuthProvider></ErrorBoundary></React.StrictMode>
 )
